@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 
 const MapComponent = () => {
   const mapRef = useRef(null);
@@ -7,12 +7,40 @@ const MapComponent = () => {
 
   // Sample food places in Singapore (name, lat, lng, cuisine)
   const foodPlaces = [
-    { name: 'Maxwell Food Centre', lat: 1.2819, lng: 103.8307, cuisine: ['Hawker', 'Chinese'] },
-    { name: 'Lau Pa Sat', lat: 1.2760, lng: 103.8512, cuisine: ['Hawker', 'Satay'] },
-    { name: 'Chinatown Complex Food Centre', lat: 1.2803, lng: 103.8424, cuisine: ['Hawker', 'Chinese'] },
-    { name: 'Tekka Centre', lat: 1.3080, lng: 103.8495, cuisine: ['Hawker', 'Indian'] },
-    { name: 'Old Airport Road Food Centre', lat: 1.3205, lng: 103.9088, cuisine: ['Hawker', 'Various'] },
+    {
+      name: "Maxwell Food Centre",
+      lat: 1.2819,
+      lng: 103.8307,
+      cuisine: ["Hawker", "Chinese"],
+    },
+    {
+      name: "Lau Pa Sat",
+      lat: 1.276,
+      lng: 103.8512,
+      cuisine: ["Hawker", "Satay"],
+    },
+    {
+      name: "Chinatown Complex Food Centre",
+      lat: 1.2803,
+      lng: 103.8424,
+      cuisine: ["Hawker", "Chinese"],
+    },
+    {
+      name: "Tekka Centre",
+      lat: 1.308,
+      lng: 103.8495,
+      cuisine: ["Hawker", "Indian"],
+    },
+    {
+      name: "Old Airport Road Food Centre",
+      lat: 1.3205,
+      lng: 103.9088,
+      cuisine: ["Hawker", "Various"],
+    },
   ];
+
+  const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+  const GOOGLE_MAPS_MAP_ID = process.env.REACT_APP_GOOGLE_MAPS_MAP_ID;
 
   // Load Google Maps API with Marker library dynamically
   useEffect(() => {
@@ -41,16 +69,10 @@ const MapComponent = () => {
     };
 
     // Build the script URL
-    let scriptSrc = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=marker&loading=async&callback=initMap`;
-
-    // Add map ID if we have a valid one
-    const mapId = process.env.REACT_APP_GOOGLE_MAPS_MAP_ID;
-    if (mapId && mapId.trim() !== '' && mapId !== 'YOUR_MAP_ID_HERE') {
-      scriptSrc += `&map_ids=${mapId}`;
-    }
+    let scriptSrc = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=marker&loading=async&callback=initMap`;
 
     // Create script element
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = scriptSrc;
     script.async = true;
     script.defer = true;
@@ -74,7 +96,8 @@ const MapComponent = () => {
       const map = new window.google.maps.Map(mapRef.current, {
         zoom: 12,
         center: { lat: 1.3521, lng: 103.8198 },
-        mapTypeId: 'roadmap',
+        mapTypeId: "roadmap",
+        mapId: GOOGLE_MAPS_MAP_ID,
       });
 
       // Store the map instance to prevent re-creation
@@ -92,12 +115,12 @@ const MapComponent = () => {
         // Create info window for the marker
         const infoWindow = new window.google.maps.InfoWindow({
           content: `<div><strong>${place.name}</strong><br>${place.cuisine.join(
-            ', ',
+            ", ",
           )}</div>`,
         });
 
         // Add click listener - use gmp-click for AdvancedMarkerElement
-        marker.addListener('gmp-click', () => {
+        marker.addListener("gmp-click", () => {
           infoWindow.open(map, marker);
         });
       });
@@ -108,7 +131,7 @@ const MapComponent = () => {
     <div>
       <div
         ref={mapRef}
-        style={{ width: '100%', height: 'calc(100vh - 80px)' }}
+        style={{ width: "100%", height: "calc(100vh - 80px)" }}
       />
     </div>
   );
