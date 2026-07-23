@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+
 import foodPlaces from "../data/foodPlaces.js";
 import { SINGAPORE_CENTER } from "../constants/maps.js";
+import config from "../config/config.js";
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.GOOGLE_MAPS_API_KEY;
-const GOOGLE_MAPS_MAP_ID = import.meta.env.GOOGLE_MAPS_MAP_ID;
+const [GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_MAP_ID] = [
+  config.GOOGLE_MAPS.API_KEY,
+  config.GOOGLE_MAPS.MAP_ID,
+];
 
 const MapComponent = () => {
   const mapRef = useRef(null);
