@@ -220,3 +220,4 @@ __marimo__/
 
 # JS Ignore
 node_modules/
+dist/

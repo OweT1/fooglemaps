@@ -39,8 +39,8 @@ const MapComponent = () => {
     },
   ];
 
-  const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
-  const GOOGLE_MAPS_MAP_ID = process.env.REACT_APP_GOOGLE_MAPS_MAP_ID;
+  const GOOGLE_MAPS_API_KEY = import.meta.env.GOOGLE_MAPS_API_KEY;
+  const GOOGLE_MAPS_MAP_ID = import.meta.env.GOOGLE_MAPS_MAP_ID;
 
   // Load Google Maps API with Marker library dynamically
   useEffect(() => {
