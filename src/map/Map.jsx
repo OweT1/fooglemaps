@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import foodPlaces from "./data/foodPlaces.js";
+import foodPlaces from "../data/foodPlaces.js";
+import { SINGAPORE_CENTER } from "../constants/maps.js";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.GOOGLE_MAPS_API_KEY;
 const GOOGLE_MAPS_MAP_ID = import.meta.env.GOOGLE_MAPS_MAP_ID;
-
-const SINGAPORE_CENTER = { lat: 1.3521, lng: 103.8198 };
 
 const MapComponent = () => {
   const mapRef = useRef(null);

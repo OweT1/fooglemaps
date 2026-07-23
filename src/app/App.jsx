@@ -1,4 +1,4 @@
-import MapComponent from "./Map.jsx";
+import MapComponent from "../map/Map.jsx";
 import "./App.css";
 
 function App() {
