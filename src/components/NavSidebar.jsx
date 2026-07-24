@@ -49,22 +49,44 @@ export default function NavSidebar() {
 
   return (
     <>
-      {mobileOpen && <div className="sidebar-overlay" onClick={closeMobile} />}
-      <nav className={`nav-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
+      {mobileOpen && (
+        <div className="fixed inset-0 bg-black/30 z-[89]" onClick={closeMobile} />
+      )}
+      <nav
+        className={`
+          ${collapsed ? 'w-sidebar-sm' : 'w-sidebar'}
+          max-lg:!w-sidebar
+          flex-shrink-0 bg-sidebar border-r border-border py-3 px-2 overflow-y-auto
+          flex flex-col gap-0.5
+          max-lg:fixed max-lg:top-header max-lg:left-0 max-lg:bottom-footer max-lg:z-[90]
+          max-lg:transition-transform max-lg:duration-200
+          ${mobileOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'}
+          transition-[width] duration-200
+        `}
+      >
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+            className={({ isActive }) =>
+              `flex items-center ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-sm
+               ${isActive ? 'bg-primary text-white' : 'text-content-secondary'}
+               hover:bg-surface-tertiary hover:text-content
+               transition-colors duration-200 whitespace-nowrap overflow-hidden`
+            }
             onClick={closeMobile}
           >
-            <span className="nav-icon">
+            <span className="flex items-center justify-center flex-shrink-0 w-5 h-5">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {item.icon}
               </svg>
             </span>
-            {!collapsed && <span className="nav-label">{item.label}</span>}
+            {!collapsed && (
+              <span className="text-sm font-medium opacity-100 transition-opacity duration-200">
+                {item.label}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

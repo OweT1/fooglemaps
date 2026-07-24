@@ -62,7 +62,7 @@ const MapComponent = () => {
     });
   }, [mapsLoaded]);
 
-  return <div ref={mapRef} className="map-container" />;
+  return <div ref={mapRef} className="flex-1 min-h-0" />;
 };
 
 export default MapComponent;
