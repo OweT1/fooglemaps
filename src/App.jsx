@@ -1,28 +1,34 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
 import MainLayout from "./components/MainLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import MapsPage from "./pages/MapsPage";
 import SearchPage from "./pages/SearchPage";
 import SavedPage from "./pages/SavedPage";
 import SettingsPage from "./pages/SettingsPage";
+import SignInPage from "./pages/SignInPage";
 
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <SidebarProvider>
-          <MainLayout>
+          <AuthProvider>
             <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/maps" element={<MapsPage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/saved" element={<SavedPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/signin" element={<SignInPage />} />
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/maps" element={<MapsPage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/saved" element={<ProtectedRoute><SavedPage /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
             </Routes>
-          </MainLayout>
+          </AuthProvider>
         </SidebarProvider>
       </ThemeProvider>
     </BrowserRouter>

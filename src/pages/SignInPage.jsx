@@ -1,0 +1,49 @@
+import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import config from "../config/config";
+
+export default function SignInPage() {
+  const { user, signIn } = useAuth();
+  const navigate = useNavigate();
+  const buttonRef = useRef(null);
+
+  useEffect(() => {
+    if (user) navigate("/", { replace: true });
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (!window.google?.accounts?.id) return;
+    google.accounts.id.initialize({
+      client_id: config.GOOGLE_OAUTH.CLIENT_ID,
+      callback: () => {},
+    });
+    google.accounts.id.renderButton(buttonRef.current, {
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      shape: "rectangular",
+    });
+  }, []);
+
+  return (
+    <div className="signin-page">
+      <div className="signin-card">
+        <h1>Fooglemaps</h1>
+        <p className="signin-tagline">Discover great food spots across Singapore</p>
+        <div className="signin-divider">Sign in to continue</div>
+        <div className="signin-actions">
+          <button className="google-signin-btn" onClick={signIn}>
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+              <path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+              <path fill="#FBBC05" d="M10.54 28.59A14.5 14.5 0 0 1 9.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.99 23.99 0 0 0 .5 24c0 3.77.87 7.35 2.56 10.56l7.48-5.97z" />
+              <path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+            </svg>
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
