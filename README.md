@@ -3,6 +3,7 @@
 - Node.js >= 18
 - Python >= 3.10
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
+- [just](https://just.systems/man/en/) (command runner)
 - Docker (for the PostgreSQL database)
 
 ## Setup
@@ -18,27 +19,27 @@ Fill in the values in `.env` — see `.env.example` for all required keys.
 ### 2. Database
 
 ```bash
-docker compose up -d
+just docker-up
 ```
 
-This starts a PostgreSQL 16 container on port 5432 and runs the schema from `server/db/init.sql`.
+This starts a PostgreSQL 16 container on port 5432.
 
-### 3. Backend
+### 3. Running the app
+
+You'll need **two terminals** — one for the backend and one for the frontend.
+
+#### Terminal 1 — Backend
 
 ```bash
-cd server
-uv sync                    # create venv + install dependencies
-uv run alembic upgrade head   # apply any pending migrations
-uv run uvicorn app.main:app --reload
+just backend
 ```
 
 The API will be available at `http://localhost:8080`.
 
-### 4. Frontend
+#### Terminal 2 — Frontend
 
 ```bash
-npm install
-npm run dev
+just frontend
 ```
 
 The app will be available at `http://localhost:5173`.
@@ -71,13 +72,13 @@ fooglemaps/
 
 ## Useful commands
 
-| Command | Description |
-|---------|-------------|
-| `docker compose up -d` | Start PostgreSQL |
-| `docker compose down` | Stop PostgreSQL |
-| `uv run alembic upgrade head` | Apply migrations |
-| `uv run alembic revision --autogenerate -m "desc"` | Generate a migration |
-| `uv run alembic downgrade -1` | Rollback last migration |
-| `uv run uvicorn app.main:app --reload` | Start backend dev server |
-| `npm run dev` | Start frontend dev server |
-| `npm run build` | Build frontend for production |
+| Command                                            | Description                   |
+| -------------------------------------------------- | ----------------------------- |
+| `docker compose up -d`                             | Start PostgreSQL              |
+| `docker compose down`                              | Stop PostgreSQL               |
+| `uv run alembic upgrade head`                      | Apply migrations              |
+| `uv run alembic revision --autogenerate -m "desc"` | Generate a migration          |
+| `uv run alembic downgrade -1`                      | Rollback last migration       |
+| `uv run uvicorn app.main:app --reload`             | Start backend dev server      |
+| `npm run dev`                                      | Start frontend dev server     |
+| `npm run build`                                    | Build frontend for production |
