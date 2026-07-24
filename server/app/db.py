@@ -7,7 +7,7 @@ session_factory = None
 
 
 def get_database_url() -> str:
-    url = os.environ["DATABASE_URL"]
+    url = os.environ["POSTGRES_URL"]
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
