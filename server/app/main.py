@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import app.logger
+from loguru import logger
 
 dotenv_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 load_dotenv(dotenv_path)
@@ -13,8 +15,10 @@ from .routers import auth, settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting up FoogleMaps server")
     await get_session_factory()
     yield
+    logger.info("Shutting down FoogleMaps server")
     await close_session_factory()
 
 
@@ -34,4 +38,5 @@ app.include_router(settings.router, prefix="/api/settings")
 
 @app.get("/api/health")
 async def health():
+    logger.debug("Health check requested")
     return {"status": "ok"}

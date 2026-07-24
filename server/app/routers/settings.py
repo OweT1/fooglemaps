@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,16 +16,20 @@ async def update_settings(
     session: AsyncSession = Depends(get_session),
 ):
     sub = user_info["sub"]
+    logger.info("Updating settings for sub={}", sub)
 
     result = await session.execute(select(User).where(User.google_sub == sub))
     u = result.scalar_one_or_none()
     if not u:
+        logger.warning("User not found for settings update: sub={}", sub)
         raise HTTPException(status_code=404, detail="User not found")
 
     update_data = updates.model_dump(exclude_unset=True)
     if not update_data:
+        logger.warning("No fields to update for sub={}", sub)
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    logger.debug("Settings update for user={}: {}", u.id, update_data)
     result = await session.execute(
         update(UserSettings)
         .where(UserSettings.user_id == u.id)
@@ -33,6 +38,7 @@ async def update_settings(
     )
     row = result.scalar_one()
     await session.commit()
+    logger.info("Settings updated for user={}", u.id)
 
     return SettingsResponse(
         id=str(row.id),
