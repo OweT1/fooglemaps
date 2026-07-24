@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-import foodPlaces from "../data/foodPlaces.js";
-import { SINGAPORE_CENTER } from "../constants/maps.js";
-import config from "../config/config.js";
+import foodPlaces from "./data/foodPlaces.js";
+import { SINGAPORE_CENTER } from "./constants/maps.js";
+import config from "./config/config.js";
 
 const [GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_MAP_ID] = [
   config.GOOGLE_MAPS.API_KEY,
@@ -62,9 +62,7 @@ const MapComponent = () => {
     });
   }, [mapsLoaded]);
 
-  return (
-    <div ref={mapRef} style={{ width: "100%", height: "calc(100vh - 80px)" }} />
-  );
+  return <div ref={mapRef} className="map-container" />;
 };
 
 export default MapComponent;

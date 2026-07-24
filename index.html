@@ -6,10 +6,22 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Fooglemaps - Singapore Food Map" />
     <title>Fooglemaps</title>
+    <script>
+      (function() {
+        var key = "fooglemaps-theme";
+        var pref;
+        try { pref = localStorage.getItem(key); } catch(e) {}
+        if (!pref) pref = "light";
+        var theme = pref === "system"
+          ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+          : pref;
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <script type="module" src="/src/app/index.jsx"></script>
+    <script type="module" src="/src/index.jsx"></script>
   </body>
 </html>
