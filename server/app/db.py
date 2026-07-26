@@ -7,10 +7,22 @@ session_factory = None
 
 
 def get_database_url() -> str:
-    url = os.environ["POSTGRES_URL"]
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    return url
+    try:
+        if os.environ.get("POSTGRES_URL"):
+            return os.environ["POSTGRES_URL"]
+        else:
+            user = os.environ["POSTGRES_USER"]
+            password = os.environ["POSTGRES_PASSWORD"]
+            host = os.environ.get("POSTGRES_HOST", "localhost")
+            port = os.environ.get("POSTGRES_PORT", "5432")
+            db = os.environ["POSTGRES_DB"]
+            return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
+    except KeyError as e:
+        logger.error("Please set either 'POSTGRES_URL' or the respective 'POSTGRES' environmental variables.")
+        raise e
+    except Exception as e:
+        logger.error("Unable to fetch database url: {}", e)
+        raise e
 
 
 async def get_session_factory() -> async_sessionmaker[AsyncSession]:

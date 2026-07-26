@@ -25,10 +25,8 @@ logger.info("Alembic migration environment loaded")
 
 
 def get_url() -> str:
-    url = os.environ["POSTGRES_URL"]
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    return url
+    from app.db import get_database_url
+    return get_database_url()
 
 
 def run_migrations_offline() -> None:
