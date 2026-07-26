@@ -34,7 +34,7 @@ You'll need **two terminals** — one for the backend and one for the frontend.
 just backend
 ```
 
-The API will be available at `http://localhost:8080`.
+The API will be available at `http://localhost:8000`.
 
 #### Terminal 2 — Frontend
 

@@ -1,9 +1,8 @@
 import os
 from typing import AsyncGenerator
+import requests
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,16 +16,20 @@ async def verify_google_token(credentials=Depends(security)):
         logger.warning("Missing token in request")
         raise HTTPException(status_code=401, detail="Missing token")
     try:
-        info = id_token.verify_oauth2_token(
-            credentials.credentials,
-            requests.Request(),
-            os.environ["GOOGLE_OAUTH_CLIENT_ID"],
+        resp = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {credentials.credentials}"},
+            timeout=10,
         )
-        logger.debug("Token verified for sub={}", info.get("sub"))
-        return info
-    except ValueError as e:
-        logger.warning("Invalid or expired token: {}", e)
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        if resp.status_code != 200:
+            logger.warning("Invalid access token: {}", resp.text)
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        user_info = resp.json()
+        logger.debug("Token verified for sub={}", user_info.get("sub"))
+        return user_info
+    except requests.RequestException as e:
+        logger.warning("Failed to verify token: {}", e)
+        raise HTTPException(status_code=401, detail="Token verification failed")
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

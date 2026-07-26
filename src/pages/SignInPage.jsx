@@ -1,30 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import config from "../config/config";
 
 export default function SignInPage() {
   const { user, signIn } = useAuth();
   const navigate = useNavigate();
-  const buttonRef = useRef(null);
 
   useEffect(() => {
     if (user) navigate("/", { replace: true });
   }, [user, navigate]);
-
-  useEffect(() => {
-    if (!window.google?.accounts?.id) return;
-    google.accounts.id.initialize({
-      client_id: config.GOOGLE_OAUTH.CLIENT_ID,
-      callback: () => {},
-    });
-    google.accounts.id.renderButton(buttonRef.current, {
-      theme: "outline",
-      size: "large",
-      text: "signin_with",
-      shape: "rectangular",
-    });
-  }, []);
 
   return (
     <div className="signin-page">

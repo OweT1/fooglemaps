@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "./ThemeContext";
 import config from "../config/config";
@@ -67,58 +73,82 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const signIn = useCallback(() => {
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: config.GOOGLE_OAUTH.CLIENT_ID,
-      scope: "openid email profile",
-      callback: (response) => {
-        if (response.error) return;
-        const payload = decodeJwt(response.id_token);
-        if (!payload) return;
+  // const redirectToSignIn = navigate("/signin");
 
-        fetch("/api/auth/login", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${response.id_token}` },
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            const session = {
-              user: data.user,
-              settings: data.settings,
-              credential: response.id_token,
-            };
-            setUser(data.user);
-            setSettings(data.settings);
-            if (data.settings?.theme) setTheme(data.settings.theme);
-            saveSession(session);
-            navigate("/", { replace: true });
-          });
-      },
-    });
-    client.requestAccessToken();
+  const signIn = useCallback(() => {
+    if (!window.google?.accounts?.oauth2) {
+      console.error("Google Identity Services not loaded yet");
+      alert(
+        "Google Sign-In is still loading. Please wait a moment and try again.",
+      );
+      return;
+    }
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: config.GOOGLE_OAUTH.CLIENT_ID,
+        scope: "openid email profile",
+        callback: (response) => {
+          if (response.error) {
+            console.error("Google OAuth error:", response.error);
+            return;
+          }
+          const user_token = response.access_token;
+
+          fetch("/api/auth/login", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${user_token}` },
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Login failed");
+              return res.json();
+            })
+            .then((data) => {
+              const session = {
+                user: data.user,
+                settings: data.settings,
+                credential: user_token,
+              };
+              setUser(data.user);
+              setSettings(data.settings);
+              if (data.settings?.theme) setTheme(data.settings.theme);
+              saveSession(session);
+              navigate("/", { replace: true });
+            })
+            .catch((err) => {
+              console.error("Sign-in error:", err);
+            });
+        },
+      });
+      client.requestAccessToken();
+    } catch (err) {
+      console.error("GIS initTokenClient error:", err);
+    }
   }, [navigate, setTheme]);
 
-  const updateSettings = useCallback(async (updates) => {
-    const saved = loadSession();
-    if (!saved?.credential) return;
+  const updateSettings = useCallback(
+    async (updates) => {
+      const saved = loadSession();
+      if (!saved?.credential) return;
 
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${saved.credential}`,
-      },
-      body: JSON.stringify(updates),
-    });
-    if (!res.ok) return;
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${saved.credential}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) return;
 
-    const data = await res.json();
-    setSettings(data.settings);
-    if (data.settings?.theme) setTheme(data.settings.theme);
+      const data = await res.json();
+      setSettings(data.settings);
+      if (data.settings?.theme) setTheme(data.settings.theme);
 
-    const updated = { ...saved, settings: data.settings };
-    saveSession(updated);
-  }, [setTheme]);
+      const updated = { ...saved, settings: data.settings };
+      saveSession(updated);
+    },
+    [setTheme],
+  );
 
   const signOut = useCallback(() => {
     if (window.google?.accounts) {
@@ -130,7 +160,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, settings, loading, signIn, signOut, updateSettings }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        settings,
+        loading,
+        // redirectToSignIn,
+        signIn,
+        signOut,
+        updateSettings,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
