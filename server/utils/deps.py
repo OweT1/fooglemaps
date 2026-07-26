@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .db import get_session_factory
+from db.session import get_session_factory
 
 security = HTTPBearer(auto_error=False)
 

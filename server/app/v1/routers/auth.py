@@ -4,8 +4,9 @@ from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..deps import verify_google_token, get_session
-from ..models import LoginResponse, UserResponse, SettingsResponse, User, UserSettings
+from utils.deps import verify_google_token, get_session
+from db.constants import LoginResponse, UserResponse, SettingsResponse
+from db.models import User, UserSettings
 
 router = APIRouter()
 

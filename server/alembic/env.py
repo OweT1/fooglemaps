@@ -18,14 +18,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from app.models import Base
+from db.models import Base
 target_metadata = Base.metadata
 
 logger.info("Alembic migration environment loaded")
 
 
 def get_url() -> str:
-    from app.db import get_database_url
+    from db.session import get_database_url
     return get_database_url()
 
 

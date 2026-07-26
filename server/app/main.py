@@ -3,14 +3,14 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import app.logger
+import utils.logger
 from loguru import logger
 
 dotenv_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 load_dotenv(dotenv_path)
 
-from .db import get_session_factory, close_session_factory
-from .routers import auth, settings
+from db.session import get_session_factory, close_session_factory
+from .v1.routers import auth, settings
 
 
 @asynccontextmanager

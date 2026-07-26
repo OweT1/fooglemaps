@@ -3,8 +3,9 @@ from loguru import logger
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..deps import verify_google_token, get_session
-from ..models import SettingsResponse, SettingsUpdate, User, UserSettings
+from utils.deps import verify_google_token, get_session
+from db.constants import SettingsResponse, SettingsUpdate
+from db.models import User, UserSettings
 
 router = APIRouter()
 
