@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-import foodPlaces from "./data/foodPlaces.js";
 import { SINGAPORE_CENTER } from "./constants/maps.js";
 import config from "./config/config.js";
 
@@ -12,7 +11,20 @@ const [GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_MAP_ID] = [
 const MapComponent = () => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
   const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [places, setPlaces] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/places")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.type === "FeatureCollection") {
+          setPlaces(data.features);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (window.google?.maps) {
@@ -46,21 +58,40 @@ const MapComponent = () => {
     });
 
     mapInstanceRef.current = map;
+  }, [mapsLoaded]);
 
-    foodPlaces.forEach((place) => {
+  useEffect(() => {
+    if (!mapsLoaded || !mapInstanceRef.current) return;
+
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    const map = mapInstanceRef.current;
+
+    places.forEach((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
+      const props = feature.properties;
+
       const marker = new window.google.maps.marker.AdvancedMarkerElement({
         map,
-        position: { lat: place.lat, lng: place.lng },
-        title: place.name,
+        position: { lat, lng },
+        title: props.name,
       });
 
       const infoWindow = new window.google.maps.InfoWindow({
-        content: `<div><strong>${place.name}</strong><br>${place.cuisine.join(", ")}</div>`,
+        content: `<div><strong>${props.name}</strong>${
+          props.address ? `<br>${props.address}` : ""
+        }${
+          props.cuisine_tags?.length
+            ? `<br>${props.cuisine_tags.join(", ")}`
+            : ""
+        }</div>`,
       });
 
       marker.addListener("gmp-click", () => infoWindow.open(map, marker));
+      markersRef.current.push(marker);
     });
-  }, [mapsLoaded]);
+  }, [mapsLoaded, places]);
 
   return <div ref={mapRef} className="flex-1 min-h-0" />;
 };

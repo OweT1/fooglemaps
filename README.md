@@ -16,6 +16,16 @@ cp .env.example .env
 
 Fill in the values in `.env` — see `.env.example` for all required keys.
 
+| Variable                                                | How to get it                                                                                                                                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GOOGLE_MAPS_API_KEY`                                   | [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → Create Credentials → API Key. Enable the Maps JavaScript API and Places API.                                                           |
+| `GOOGLE_MAPS_MAP_ID`                                    | [Google Cloud Console](https://console.cloud.google.com) → Map Management → Create Map ID (or use an existing one). Must be associated with the API key above.                                                                    |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID (Web application). Add `http://localhost:8000/api/auth/callback` to Authorized redirect URIs. |
+| `POSTGRES_PASSWORD`                                     | Pick any password. If you change this you must also update `docker-compose.yml`.                                                                                                                                                  |
+| `POSTGRES_URL`                                          | Leave blank — it's auto-built from the other `POSTGRES_*` vars.                                                                                                                                                                   |
+| `INSTAGRAM_SESSION_ID`                                  | Log into Instagram in your browser, open DevTools → Application → Cookies → `sessionid`.                                                                                                                                          |
+| `OPENROUTER_API_KEY`                                    | [OpenRouter](https://openrouter.ai/keys) → Create API key.                                                                                                                                                                        |
+
 ### 2. Database
 
 ```bash

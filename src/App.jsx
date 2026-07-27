@@ -6,6 +6,7 @@ import MainLayout from "./components/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import MapsPage from "./pages/MapsPage";
+import FeedPage from "./pages/FeedPage";
 import SearchPage from "./pages/SearchPage";
 import SavedPage from "./pages/SavedPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -22,6 +23,7 @@ export default function App() {
               <Route element={<MainLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/maps" element={<MapsPage />} />
+                <Route path="/feed" element={<FeedPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/saved" element={<ProtectedRoute><SavedPage /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
