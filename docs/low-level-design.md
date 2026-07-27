@@ -2,87 +2,114 @@
 
 ## 1. Overview
 
-Fooglemaps is a Google‑Maps‑style web application that aggregates food‑related posts from selected Instagram accounts, extracts location and cuisine information, stores them in a geospatial database, and displays points of interest on an interactive map. Users can search by cuisine, location (“near me”), and receive personalized recommendations based on their eating history.  
-A lightweight OAuth‑based login lets users **save favorites, create collections, and view their history** across devices.
+Fooglemaps is a Google‑Maps‑style web application that displays Singapore food spots on an interactive map. Users can search by cuisine/location, save favorites, and customize their experience. Data is currently static (hardcoded in `src/data/foodPlaces.js`) with plans to ingest from Instagram in the future.
 
-## 2. High-Level Architecture
+## 2. Architecture
 
-```mermaid
-graph TD
-    %% External Services
-    Instagram[Instagram Graph API/Scraper] -->|Raw posts, geotags, captions| Ingestion[Ingestion Service]
-    GoogleMaps[Google Maps JavaScript API] -->|Map tiles, geocoding| Frontend
-
-    %% Core Services
-    Ingestion -->|Processed POIs| FoodPlaceDB[(FoodPlace DB<br/>PostgreSQL + PostGIS)]
-    FoodPlaceDB -->|GeoJSON place data| API[API Gateway]
-    FoodPlaceDB -->|GeoJSON place data| Map[Map Service]
-
-    API -->|API endpoints| Frontend
-    API -->|Recommendation requests| Recommendation[Recommendation Service]
-    API -->|Auth requests| Auth[Auth Service]
-    Recommendation -->|User history/cache| Redis[(Redis)]
-    Auth -->|User data| FoodPlaceDB
-
-    %% Frontend & User Interactions
-    Frontend -->|Map bounds, search| API
-    Frontend -->|Auth requests| Auth
-    Frontend -->|Favorites/collections| API
-    Frontend -->|View/click interactions view/click| API
-    Frontend -->|User profile, history| API
-
-    %% Supporting Services
-    API -->|Logs, metrics| Logging[Analytics/Logging]
-    Auth -->|Logs, metrics| Logging
-    Ingestion -->|Logs, metrics| Logging
-    Recommendation -->|Logs, metrics| Logging
-    Map -->|Logs, metrics| Logging
-
-    %% Infrastructure
-    subgraph Infrastructure[Infrastructure Docker/Kubernetes]
-        direction TB
-        API
-        Ingestion
-        Recommendation
-        Auth
-        Map
-        FoodPlaceDB
-        Redis
-        Nginx[NGINX Reverse Proxy]
-    end
-
-    Nginx -->|Reverse proxy| API
-    Nginx -->|Static assets| Frontend
-
-    %% Styling
-    classDef external fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef service fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef db fill:#bfb,stroke:#333,stroke-width:2px;
-    classDef frontend fill:#dfd,stroke:#333,stroke-width:2px;
-    classDef infra fill:#eee,stroke:#333,stroke-width:1px;
-    classDef logging fill:#fdd,stroke:#333,stroke-width:2px;
-
-    class Instagram,GoogleMaps external;
-    class Ingestion,API,Recommendation,Auth,Map service;
-    class FoodPlaceDB,Redis db;
-    class Frontend frontend;
-    class Infrastructure infra;
-    class Logging logging;
+```
+┌──────────────────────────────────────────────────────────┐
+│  Frontend (React + Vite)                                 │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │
+│  │ Pages    │ │Contexts  │ │Components│ │ Map (Google│  │
+│  │(Home,    │ │(Auth,    │ │(Header,  │ │  Maps JS   │  │
+│  │ Maps,    │ │ Theme,   │ │ Sidebar, │ │  API)      │  │
+│  │ Search,  │ │ Sidebar) │ │ Layout)  │ │            │  │
+│  │ Saved,   │ │          │ │          │ │            │  │
+│  │ Settings,│ │          │ │          │ │            │  │
+│  │ SignIn)  │ │          │ │          │ │            │  │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │
+│                          │                               │
+│                    HTTP / JSON                           │
+│                          │                               │
+└──────────────────────────┼───────────────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+              ▼                         ▼
+┌─────────────────────────┐  ┌──────────────────────┐
+│  FastAPI Backend         │  │  Google APIs         │
+│  ┌───────────────────┐  │  │  - Identity Services │
+│  │ /api/auth/login   │  │  │  - Maps JS API       │
+│  │ /api/auth/me      │──┼──│  - UserInfo API      │
+│  │ /api/settings/    │  │  └──────────────────────┘
+│  │ /api/health       │  │
+│  └────────┬──────────┘  │
+│           │             │
+│           ▼             │
+│  ┌───────────────────┐  │
+│  │ PostgreSQL (16)    │  │
+│  │ - users            │  │
+│  │ - user_settings    │  │
+│  └───────────────────┘  │
+└─────────────────────────┘
 ```
 
-### Components
+## 3. Components
 
-| Component                  | Responsibility                                                                                                                                                              | Tech Stack                                                                                                                                                                                         |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Ingestion Service**      | Polls Instagram (Graph API or scheduled scraper), parses captions & geotags, extracts cuisine tags via simple NLP (keyword lookup or lightweight ML model), persists to DB. | Python (FastAPI), `instaloader`/official Instagram Graph API, `spacy`/`nltk` for keyword matching, optional lightweight classifier.                                                                |
-| **FoodPlace DB**           | Stores POIs with geometry, cuisine tags, timestamps, source post ID. Supports spatial queries (nearby, within polygon).                                                     | PostgreSQL + PostGIS extension. Table: `food_places(id PK, name, geom POINT, cuisine TEXT[], source_url TEXT, posted_at TIMESTAMP, raw_caption TEXT)`. Index on `geom` (GIST) and `cuisine` (GIN). |
-| **API Gateway**            | Exposes REST/GraphQL endpoints for frontend: search, nearby, recommendations, detail view, user profile, favorites, collections.                                            | Node.js (Express) or FastAPI (Python). Thin wrapper; forwards to DB, Recommendation, or Auth services.                                                                                             |
-| **Map Service**            | Serves map tiles (Leaflet/Google Maps JS) and provides marker data via API; optionally clusters markers.                                                                    | Frontend uses Google Maps JavaScript API; backend serves GeoJSON via `/api/places?bbox=...`.                                                                                                       |
-| **Recommendation Service** | Generates personalized suggestions based on user’s view/click history (simple collaborative filtering or content‑based).                                                    | Python (FastAPI), Redis for caching user history, optional ML model (`scikit-learn`).                                                                                                              |
-| **Auth Service**           | Handles OAuth2 login (Google, Apple, GitHub, etc.), issues JWT stateless tokens, manages user profile, favorites, collections.                                              | Node.js (Express/Passport) or FastAPI + `authlib`. Stores minimal user data in PostgreSQL.                                                                                                         |
-| **Frontend**               | Interactive map UI, search bar, filters, user profile, history, favorites, collections.                                                                                     | React + TypeScript, Google Maps JavaScript API, Redux/Zustand for state, CSS (Tailwind or plain).                                                                                                  |
-| **Analytics / Logging**    | Collects usage metrics, error logs.                                                                                                                                         | Winston (Node) or Python logging, optionally sent to ELK or cloud logging.                                                                                                                         |
-| **Infrastructure**         | Docker containers orchestrated by Docker‑Com cloud logging.                                                                                                                 |
-| **Infrastructure**         | Docker containers orchestrated by Docker‑Compose (local) or Kubernetes (prod).                                                                                              | Docker, PostgreSQL, Redis, NGINX reverse proxy.                                                                                                                                                    |
+| Component            | Responsibility                                                                 | Tech Stack                                      |
+| -------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------- |
+| **Frontend**         | Interactive map UI, search, auth, settings, saved places, responsive layout    | React 18, Vite 8, Tailwind CSS 3, React Router 7 |
+| **FastAPI Backend**  | Auth token verification (Google UserInfo API), user/settings CRUD, health check | Python 3, FastAPI, SQLAlchemy (async), asyncpg   |
+| **PostgreSQL**       | User accounts and per-user settings                                            | PostgreSQL 16 with pgcrypto extension            |
+| **Google Maps API**  | Map tiles, markers (`AdvancedMarkerElement`), InfoWindows                       | `@googlemaps/js-api-loader`                      |
+| **Google Identity**  | OAuth consent popup, access token issuance                                     | Google Identity Services (GIS)                   |
 
-## 3. Data Model
+## 4. Data Model
+
+### `users`
+| Column       | Type         | Notes                                |
+| ------------ | ------------ | ------------------------------------ |
+| id           | UUID         | PK, `gen_random_uuid()`              |
+| google_sub   | TEXT         | UNIQUE NOT NULL, Google's user ID     |
+| email        | TEXT         | UNIQUE NOT NULL                       |
+| display_name | TEXT         | NOT NULL                              |
+| avatar_url   | TEXT         |                                       |
+| created_at   | TIMESTAMPTZ  | `now()`                               |
+| updated_at   | TIMESTAMPTZ  | `now()`                               |
+
+### `user_settings`
+| Column                | Type         | Notes                              |
+| --------------------- | ------------ | ---------------------------------- |
+| id                    | UUID         | PK, `gen_random_uuid()`            |
+| user_id               | UUID         | UNIQUE NOT NULL, FK → users(id) ON DELETE CASCADE |
+| theme                 | TEXT         | Default `'system'`                 |
+| default_zoom          | INTEGER      | Default `12`                       |
+| map_type              | TEXT         | Default `'roadmap'`                |
+| notify_new_spots      | BOOLEAN      | Default `true`                     |
+| notify_recommendations| BOOLEAN      | Default `true`                     |
+| created_at            | TIMESTAMPTZ  | `now()`                            |
+| updated_at            | TIMESTAMPTZ  | `now()`                            |
+
+## 5. API Endpoints
+
+| Method | Path              | Auth Required       | Purpose                              |
+| ------ | ----------------- | ------------------- | ------------------------------------ |
+| POST   | `/api/auth/login` | Google Bearer token | Verify token, upsert user + settings |
+| GET    | `/api/auth/me`    | Google Bearer token | Return user + settings               |
+| PUT    | `/api/settings/`  | Google Bearer token | Update user settings                 |
+| GET    | `/api/health`     | No                  | Health check                         |
+
+## 6. Frontend Routes
+
+| Path       | Page          | Access    | Description                            |
+| ---------- | ------------- | --------- | -------------------------------------- |
+| `/`        | HomePage      | Public    | Dashboard with Quick Actions + stats   |
+| `/maps`    | MapsPage      | Public    | Google Map with food place markers     |
+| `/search`  | SearchPage    | Public    | Search form with cuisine/location      |
+| `/saved`   | SavedPage     | Protected | List of saved food places              |
+| `/settings`| SettingsPage  | Protected | Theme, map defaults, notifications     |
+| `/signin`  | SignInPage    | Guest     | Google Sign-In button                  |
+
+## 7. Auth Flow
+
+- Frontend uses Google Identity Services `initTokenClient` to obtain an access token.
+- Token is sent to `POST /api/auth/login` — backend verifies it via Google UserInfo API, upserts user + default settings.
+- Token stored in `sessionStorage`; sent as `Authorization: Bearer` on subsequent requests.
+- `GET /api/auth/me` verifies the token and returns the user profile.
+
+## 8. Current Limitations / Future Work
+
+- **Static data**: Food places are hardcoded in `src/data/foodPlaces.js` (5 entries). See `docs/instagram-ingestion.md` for the planned ingestion pipeline.
+- **No spatial queries**: PostgreSQL does not have PostGIS installed; no spatial data types are used.
+- **No recommendations**: A recommendation service (Redis + ML) is planned but not implemented.
+- **No refresh tokens**: The current flow requires re-authentication when the Google access token expires.

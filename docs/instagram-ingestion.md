@@ -1,5 +1,7 @@
 # Instagram Ingestion Service
 
+> **Status: Not yet implemented** — The frontend currently uses static data from `src/data/foodPlaces.js`. This document describes the planned architecture for when Instagram ingestion is built.
+
 ## Overview
 
 A FastAPI-based backend service that polls Instagram food creators for new posts,

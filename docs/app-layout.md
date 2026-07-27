@@ -1,117 +1,107 @@
 # App Layout Design
 
 ## Overview
-This document describes the proposed layout for the Fooglemaps web application built with JavaScript/React. The layout follows common web application patterns with a header, navigation sidebar, and main content area.
+This document describes the layout for the Fooglemaps web application built with React. The layout follows common web application patterns with a header, navigation sidebar, and main content area.
 
 ## Layout Structure
 
 ### Header (Top Bar)
-- **Position**: Fixed at top of viewport
-- **Height**: 60px
+- **Position**: Fixed at top of viewport (z-50)
+- **Height**: 60px (theme token `header`)
 - **Contents**:
-  - Application logo/brand on left
-  - Search bar (prominent, centered)
-  - User avatar/notifications/profile menu on right
-- **Behavior**: Remains visible on scroll; may shrink on scroll down for more vertical space
+  - Hamburger button (toggles sidebar) on left
+  - "Fooglemaps" logo/brand
+  - Search bar (centered, hidden on mobile via `hidden md:block`)
+  - UserMenu (avatar or sign-in button) on right
+- **Behavior**: Remains visible on scroll
 
 ### Navigation Sidebar
 - **Position**: Fixed left side, below header
-- **Width**: 240px (collapsible to 60px icon-only mode)
+- **Width**: 240px (theme token `sidebar`), collapsible to 60px icon-only mode (theme token `sidebar-sm`) via hamburger toggle
 - **Contents**:
-  - Brand/logo (optional duplicate)
   - Navigation items:
-    - Dashboard/Home
-    - Maps
-    - Search
-    - Saved Places
-    - Routes
-    - Settings
+    - Home (house icon)
+    - Maps (map icon)
+    - Search (magnifying glass icon)
+    - Saved Places (bookmark icon)
+    - Settings (cog icon)
   - Each item: icon + text label (icon-only when collapsed)
-- **Behavior**: 
-  - Collapsible via hamburger/menu button in header
+- **Behavior**:
+  - Collapsible via hamburger button in header
   - Persistent across route changes
-  - Scrollable if content exceeds viewport height
+  - On mobile (<768px): renders as a drawer overlay with backdrop (controlled by `mobileOpen` state), triggered by hamburger
 
 ### Main Content Area
-- **Position**: Fill remaining space (to right of sidebar, below header)
-- **Padding**: 24px responsive padding
+- **Position**: Fills remaining space (to right of sidebar, below header)
+- **Padding**: Responsive (pt-16 for header, md:ml-60 or md:ml-16 depending on sidebar state)
 - **Components**:
-  - Page title/breadcrumb bar
+  - Page title/subtitle (via PageContainer)
   - Primary content (varies by route):
-    - Home: Welcome message, quick actions, recent activity
-    - Maps: Map container with controls (zoom, layers, search)
-    - Search: Search form + results list/map
-    - Saved: Grid/list of saved places/folders
-    - Settings: Form sections
+    - Home: Dashboard with Quick Actions cards + cuisine stats
+    - Maps: Full-height Google Map with markers for food places
+    - Search: Search form + cuisine/location filters
+    - Saved: List of bookmarked food places with cuisine badges
+    - Settings: Theme selector, map defaults, notification toggles
 
-### Footer (Optional)
-- **Position**: Fixed at bottom or static after main content
-- **Contents**: Copyright, links to terms/privacy, version number
-- **Visibility**: May be hidden on auth pages or full-screen modals
+### Footer (Static)
+- **Position**: Static after main content
+- **Contents**: "© 2025 Fooglemaps · Privacy · Terms"
+- **Visibility**: Visible on all pages
 
 ## Responsive Behavior
 
 ### Desktop (≥1024px)
-- Sidebar expanded by default
+- Sidebar expanded by default (collapsible via hamburger)
 - Header fixed top
-- Main content uses grid/flex layout
+- Search bar visible
 
 ### Tablet (768px-1023px)
-- Sidebar may start collapsed (icon-only) or be toggleable
-- Header elements may adjust (search bar may move to sidebar)
-- Main content uses full width minus sidebar
+- Sidebar collapsible via hamburger
+- Search bar visible
 
 ### Mobile (<768px)
-- Sidebar converted to bottom navigation bar (as originally considered) OR drawer menu
-- Header height reduced
+- Sidebar converts to drawer overlay with backdrop
+- Search bar hidden (`hidden md:block`)
 - Main content uses full viewport width
-- Bottom navigation options: Home, Maps, Search, Saved, Profile (if using bottom nav)
-- OR: Hamburger menu opens sidebar as drawer overlay
+- Hamburger opens sidebar as overlay
 
 ## Component Breakdown
 
 ### Reusable Components
-1. **AppHeader**: Logo, search, user menu
-2. **NavSidebar**: Collapsible navigation with active state indicators
-3. **MainLayout**: Wrapper that positions header, sidebar, main content
-4. **PageContainer**: Contains page title, breadcrumbs, and children
-5. **MapContainer**: Leaflet/Google Maps wrapper with controls
-6. **SearchBar**: Debounced input with suggestions
-7. **UserMenu**: Avatar, dropdown with profile, settings, logout
-8. **Footer**: Optional static/footer component
+1. **AppHeader**: Hamburger, logo, search, UserMenu
+2. **NavSidebar**: Collapsible navigation with NavLink active states and SVG icons
+3. **MainLayout**: Wrapper that positions header, sidebar, `<Outlet />`, and Footer
+4. **PageContainer**: Title + optional subtitle + children wrapper
+5. **UserMenu**: Avatar button with dropdown — shows "Sign in" (unauthenticated) or Saved/Settings/Sign out (authenticated)
+6. **Footer**: Static copyright + Privacy/Terms links
 
-### Route- Specific Components
-- **HomePage**: Dashboard widgets, quick actions
-- **MapsPage**: MapContainer + layers panel + place search sidebar
-- **SearchPage**: SearchForm + ResultsList + ResultsMap
-- **SavedPage**: Folder list + Items grid/list
-- **SettingsPage**: Form sections with save/cancel
+### Route-Specific Components
+- **HomePage**: Dashboard widgets (Quick Actions) + food spot count + cuisine tags
+- **MapsPage**: Google Map with `AdvancedMarkerElement` markers + `InfoWindow` on click
+- **SearchPage**: Search input + cuisine/location dropdowns + Search button
+- **SavedPage**: List of saved places with cuisine badges and bookmark button
+- **SettingsPage**: Theme selector (light/dark/system), default zoom, map type, notification toggles
+- **SignInPage**: Full-screen centered Google Sign-In button
 
-## State Management Considerations
-- User auth state (global)
-- Sidebar collapsed state (global or context)
-- Selected route/location (may be URL-sync)
-- Map state (bounds, zoom, layers) - consider keeping in URL or app state
-- Search query and results
+## State Management
+- **AuthContext**: `user`, `settings`, `loading`, `signIn()`, `signOut()`, `updateSettings()` — persists token in `sessionStorage`
+- **SidebarContext**: `collapsed` (desktop toggle), `mobileOpen` (mobile drawer), `isMobile` (breakpoint detection)
+- **ThemeContext**: `preference` (light/dark/system), resolved theme, `data-theme` attribute on `<html>`, persists to `localStorage`
 
 ## Styling Approach
-- Use CSS modules or styled-components for scoping
-- Follow consistent spacing (8px grid)
-- Utilize CSS variables for theme colors (primary, secondary, background, text)
-- Ensure accessibility: proper ARIA labels, keyboard navigation, focus management
-- Dark/light theme support via CSS variables
+- **Tailwind CSS** for utility-first styling
+- **CSS custom properties** defined in `src/index.css` for light/dark theme variables
+- **Tailwind config** extended with custom colors (`primary`, `surface`, `content`, `border`, `sidebar`, `header`, `card`) and spacing (`header`, `sidebar`, `sidebar-sm`, `footer`) from `src/themes/*`
+- **Dark mode** via `data-theme` selector (Tailwind `darkMode: 'selector'`)
+- **CSS variables** toggled via `[data-theme="dark"]` and `[data-theme="light"]` selectors
 
 ## Performance Considerations
-- Lazy load route-specific components via React.lazy
-- Virtualize long lists (saved places, search results)
-- Debounce search inputs
-- Memoize expensive calculations
-- Consider server-side rendering for initial load if SEO needed
+- Map component uses `useEffect` cleanup to prevent memory leaks
+- `AuthContext` skips token verification on mount if no token is in `sessionStorage`
 
 ## Implementation Notes
-- Use React Router v6 for navigation
-- Header remains mounted across route changes
-- Sidebar state managed via Context API or state management library (Redux/Zustand)
-- Map library integration: ensure proper cleanup on unmount
-- Consider using React Query/SWR for data fetching
-- Form validation with React Hook Form or similar
+- Uses React Router v7 for routing (`react-router-dom`)
+- Header remains mounted across route changes (part of `MainLayout`)
+- Sidebar state managed via React Context API
+- Google Maps loaded via `import { Loader } from '@googlemaps/js-api-loader'`
+- Google Identity Services (GIS) for OAuth
