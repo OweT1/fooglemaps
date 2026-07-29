@@ -1,6 +1,6 @@
 # Instagram Ingestion Service
 
-> **Status: Not yet implemented** — The frontend currently uses static data from `src/data/foodPlaces.js`. This document describes the planned architecture for when Instagram ingestion is built.
+> **Status: Implemented** — Uses Instagram's internal Web API (via managed session) to fetch posts from tracked creators.
 
 ## Overview
 
@@ -13,13 +13,18 @@ serves the data to the Fooglemaps frontend for display on an interactive map.
 ```
 Instagram (public profiles)
       │
-      │ polling via instaloader (every 15 min by default)
+      │ polling via Instagram Web API (every 15 min by default)
       ▼
 ┌────────────────────────────────────────┐
 │  FastAPI Ingestion + API Service        │
 │                                         │
+│  /services/instagram_client.py          │
+│    → managed session → Instagram API    │
+│    → login / cookie persistence         │
+│    → rate limiting / retries            │
+│                                         │
 │  /services/ingestor.py                  │
-│    → instaloader → parse post           │
+│    → fetch_user_posts()                 │
 │    → extract location / lat-lng         │
 │    → store in DB                        │
 │                                         │
@@ -43,119 +48,53 @@ Instagram (public profiles)
 ## Data Flow
 
 1. **Polling**: On startup + every N minutes, the ingestor checks tracked creators.
-2. **Fetch**: For each creator, instaloader fetches recent posts (configurable limit).
+2. **Fetch**: For each creator, `InstagramClient.fetch_user_posts()` hits Instagram's internal Web API endpoints.
 3. **Dedup**: Skip posts already in DB (matched by Instagram shortcode).
 4. **Extract**:
    - Caption, image URL, timestamp, post URL
-   - Location name + Instagram-provided lat/lng (if available)
-5. **Geocode**: If Instagram provides no coordinates, call Google Geocoding API with the location name.
+5. **Geocode**: If the LLM extracts a place name, call Google Geocoding API with the location name.
 6. **Store**: Insert `instagram_posts` row and upsert `food_places` row (with PostGIS geometry).
 7. **Serve**: Frontend fetches `/api/places` (GeoJSON) for the map and `/api/posts` for the feed.
 
-## Database Schema
+## Authentication
 
-### creators
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID | PK, default gen_random_uuid() |
-| username | VARCHAR(255) | Unique, Instagram handle |
-| display_name | VARCHAR(255) | |
-| profile_pic_url | TEXT | |
-| is_active | BOOLEAN | Default true |
-| last_checked_at | TIMESTAMPTZ | Last ingestion time |
-| created_at | TIMESTAMPTZ | |
-| updated_at | TIMESTAMPTZ | |
+The client supports two authentication methods, checked in order:
 
-### instagram_posts
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID | PK |
-| shortcode | VARCHAR(255) | Unique, Instagram shortcode |
-| creator_id | UUID | FK → creators.id |
-| caption | TEXT | |
-| image_url | TEXT | |
-| post_url | TEXT | |
-| taken_at | TIMESTAMPTZ | |
-| media_type | VARCHAR(20) | image / video / carousel |
-| location_name | VARCHAR(500) | From Instagram location tag |
-| location_id | VARCHAR(255) | Instagram internal location ID |
-| raw_json | JSONB | Full post data from instaloader |
-| created_at | TIMESTAMPTZ | |
+1. **Username/Password (Recommended)**: Set `INSTAGRAM_USERNAME` and `INSTAGRAM_PASSWORD`. The client will log in programmatically and persist cookies to `data/instagram_cookies.json` for reuse across restarts.
+2. **Session ID (Fallback)**: Set `INSTAGRAM_SESSION_ID` — copy the `sessionid` cookie value from your browser after logging into instagram.com. The client will use this directly without a full login flow.
 
-### food_places
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID | PK |
-| name | VARCHAR(500) | Location name |
-| address | TEXT | Geocoded address |
-| geom | GEOGRAPHY(Point, 4326) | PostGIS spatial point |
-| cuisine_tags | TEXT[] | From caption analysis (future) |
-| source_post_id | UUID | FK → instagram_posts.id |
-| created_at | TIMESTAMPTZ | |
-| updated_at | TIMESTAMPTZ | |
+Cookies are cached to disk to avoid re-authenticating on every restart.
 
-## API Endpoints
+## API Endpoints Used
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/posts` | List posts (paginated, filterable) |
-| GET | `/api/posts/{id}` | Single post detail |
-| GET | `/api/creators` | List tracked creators |
-| POST | `/api/creators` | Add a creator to track |
-| DELETE | `/api/creators/{id}` | Stop tracking a creator |
-| GET | `/api/places` | Food places as GeoJSON for map |
-| GET | `/api/places/{id}` | Single place detail |
-| POST | `/api/refresh` | Manually trigger ingestion |
-| GET | `/health` | Health check |
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/users/web_profile_info/?username={user}` | Look up user PK |
+| GET | `/api/v1/feed/user/{pk}/?count=N&max_id={cursor}` | Fetch paginated media |
 
-## Ingestion Details
+These are the same endpoints the official Instagram web app uses internally.
 
-### instaloader Usage
-
-```python
-import instaloader
-
-L = instaloader.Instaloader()
-profile = instaloader.Profile.from_username(L.context, username)
-
-for post in profile.get_posts():
-    location = post.location  # instaloader.Location
-    lat = location.lat if location else None
-    lng = location.lng if location else None
-    loc_name = location.name if location else None
-    # ... store
-```
-
-### Google Geocoding Fallback
-
-When Instagram provides a location name but no coordinates:
-
-```
-GET https://maps.googleapis.com/maps/api/geocode/json
-  ?address={location_name}
-  &key={GOOGLE_MAPS_API_KEY}
-  &region=sg
-```
-
-The `region=sg` parameter biases results toward Singapore.
-
-### Scheduling
-
-- Background task via `asyncio` + `apscheduler` or simple `asyncio.create_task` loop
-- Configurable interval (default: 15 minutes)
-- `/api/refresh` endpoint for on-demand triggers
-- Optional cron job calling `/api/refresh` for production
-
-### Environment Variables
+## Environment Variables
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
 | `DATABASE_URL` | Yes | - | PostgreSQL connection string |
 | `GOOGLE_MAPS_API_KEY` | Yes | - | Used for Geocoding API |
-| `INSTAGRAM_SESSION_ID` | No | - | Optional, for authenticated instaloader |
-| `POLL_INTERVAL_MINUTES` | No | 15 | Ingestion interval |
+| `INSTAGRAM_USERNAME` | No* | - | Instagram login username |
+| `INSTAGRAM_PASSWORD` | No* | - | Instagram login password |
+| `INSTAGRAM_SESSION_ID` | No* | - | Session cookie from browser |
+| `POLL_INTERVAL_MINUTES` | No | 30 | Ingestion interval |
 | `POSTS_PER_CREATOR` | No | 10 | Max posts to check per run |
 | `CORS_ORIGINS` | No | `http://localhost:5173` | Frontend URL |
+
+\* At least one auth method is required to fetch posts from private/protected profiles. For public profiles, the API may still work without authentication but rates are stricter.
+
+## Rate Limiting
+
+The client has built-in retry logic for 429 (rate limited) responses. If you hit rate limits:
+- Reduce `POLL_INTERVAL_MINUTES` to a higher value
+- Use a dedicated Instagram account with a good reputation
+- Avoid running multiple concurrent ingestion jobs
 
 ## Frontend Integration
 

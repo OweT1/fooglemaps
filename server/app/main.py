@@ -13,6 +13,7 @@ load_dotenv()
 from db.session import get_session_factory, close_session_factory
 from db.models import Creator
 from services.ingestor import ingest_creator_posts
+from services.instagram_client import close_client
 from utils.deps import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from .v1.routers import auth, settings, posts, creators, places
@@ -86,6 +87,7 @@ async def lifespan(app: FastAPI):
             await _scheduler_task
         except asyncio.CancelledError:
             pass
+    await close_client()
     await close_session_factory()
 
 
