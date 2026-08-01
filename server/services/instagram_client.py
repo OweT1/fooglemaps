@@ -1,11 +1,13 @@
 import asyncio
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
+from httpx_curl_cffi import AsyncCurlTransport
 from loguru import logger
 
 INSTAGRAM_BASE = "https://www.instagram.com"
@@ -37,6 +39,7 @@ class InstagramClient:
     def __init__(self):
         self.client = httpx.AsyncClient(
             base_url=INSTAGRAM_BASE,
+            transport=AsyncCurlTransport(impersonate="chrome"),
             headers={
                 "User-Agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -52,6 +55,7 @@ class InstagramClient:
         )
         self._loaded = False
         self._logged_in = False
+        self._lsd: Optional[str] = None
 
     @property
     def _csrf(self) -> Optional[str]:
@@ -61,15 +65,34 @@ class InstagramClient:
         if self._loaded:
             return
 
+        session_cookie = os.getenv("INSTAGRAM_SESSION_COOKIE")
+        if session_cookie:
+            self.client.cookies.set(
+                "sessionid",
+                session_cookie,
+                domain=".instagram.com",
+            )
+            self._logged_in = True
+            resp = await self.client.get("/")
+            resp.raise_for_status()
+            logger.debug("Primed session, csrf: {}", self._csrf)
+            self._loaded = True
+            logger.info("Using provided Instagram session cookie")
+            return
+
         username = os.getenv("INSTAGRAM_USERNAME")
         password = os.getenv("INSTAGRAM_PASSWORD")
         await self._login(username, password)
         self._loaded = True
 
     async def _fetch_csrf_token(self):
-        resp = await self.client.get("/")
+        resp = await self.client.get("/accounts/login/")
         resp.raise_for_status()
         logger.debug("Fetched CSRF token: {}", self._csrf)
+        match = re.search(r'"lsd"\s*:\s*"([^"]+)"', resp.text)
+        if match:
+            self._lsd = match.group(1)
+            logger.debug("Extracted lsd token: {}", self._lsd)
 
     async def _login(self, username: str, password: str):
         await self._fetch_csrf_token()
@@ -80,10 +103,15 @@ class InstagramClient:
             "username": username,
             "queryParams": "{}",
             "optIntoOneTap": "false",
+            "stopDeletionNonce": "",
+            "trustedDeviceRecords": "{}",
+            "lsd": self._lsd or "",
         }
         headers = {
             "X-CSRFToken": self._csrf or "",
             "X-Instagram-AJAX": "1",
+            "X-IG-App-ID": WEB_APP_ID,
+            "X-Requested-With": "XMLHttpRequest",
             "Content-Type": "application/x-www-form-urlencoded",
             "Referer": f"{INSTAGRAM_BASE}/accounts/login/",
         }
@@ -92,13 +120,42 @@ class InstagramClient:
             data=data,
             headers=headers,
         )
+        content_type = resp.headers.get("Content-Type", "")
+        if "application/json" not in content_type:
+            logger.error(
+                "Login returned non-JSON response (status={} content-type={}): {}",
+                resp.status_code,
+                content_type,
+                resp.text[:500],
+            )
+            raise RuntimeError(
+                f"Instagram login returned non-JSON response (status={resp.status_code}). "
+                "The account may still be flagged or blocked — approve in a browser."
+            )
         body = resp.json()
+        logger.debug("Login response body: {}", body)
         if body.get("authenticated"):
             self._logged_in = True
             logger.info("Instagram login successful as @{}", username)
         elif body.get("two_factor_required"):
             logger.error("Instagram 2FA required — not supported yet")
             raise RuntimeError("Instagram 2FA required — log in manually in a browser")
+        elif (
+            body.get("checkpoint_url")
+            and (
+                body.get("checkpoint_required")
+                or body.get("message") == "checkpoint_required"
+                or body.get("error_type") == "AuthPlatformLoginChallengeException"
+            )
+        ):
+            logger.error(
+                "Instagram checkpoint required — open {} in a browser to approve this device/login",
+                body.get("checkpoint_url"),
+            )
+            raise RuntimeError(
+                "Instagram checkpoint required — approve the login at "
+                f"{INSTAGRAM_BASE}{body['checkpoint_url']}"
+            )
         elif body.get("message"):
             logger.error("Instagram login failed: {}", body.get("message"))
             raise RuntimeError(f"Instagram login failed: {body.get('message')}")
@@ -154,35 +211,42 @@ class InstagramClient:
 
     async def fetch_user_media(
         self,
-        user_pk: str,
+        username_or_id: str,
         count: int = 12,
         max_id: Optional[str] = None,
     ) -> tuple[list[InstagramMedia], Optional[str]]:
         await self._ensure_session()
+
+        user_id = username_or_id
+        if not username_or_id.isdigit():
+            user = await self.lookup_user(username_or_id)
+            user_id = user.pk
+
         params = {"count": count}
         if max_id:
             params["max_id"] = max_id
-        path = f"/feed/user/{user_pk}/"
-        data = await self._api_request("GET", path, params=params)
-        items = data.get("items", [])
-        next_max_id = data.get("next_max_id")
+
+        body = await self._api_request(
+            "GET",
+            f"/feed/user/{user_id}/",
+            params=params,
+        )
+
+        items = body.get("items", [])
         media_list = []
         for item in items:
             parsed = self._parse_media_item(item)
             if parsed:
                 media_list.append(parsed)
-        return media_list, next_max_id
+
+        next_cursor = body.get("next_max_id") if body.get("more_available") else None
+        return media_list, next_cursor
 
     async def fetch_user_posts(self, username: str, posts_limit: int = 10) -> list[dict]:
-        user = await self.lookup_user(username)
-        if user.is_private:
-            logger.warning("User @{} is private, cannot fetch posts", username)
-            return []
-
         all_media = []
         max_id = None
         while len(all_media) < posts_limit:
-            batch, max_id = await self.fetch_user_media(user.pk, count=min(12, posts_limit - len(all_media)), max_id=max_id)
+            batch, max_id = await self.fetch_user_media(username, count=min(12, posts_limit - len(all_media)), max_id=max_id)
             all_media.extend(batch)
             if not max_id:
                 break
@@ -201,16 +265,22 @@ class InstagramClient:
 
     def _parse_media_item(self, item: dict) -> Optional[InstagramMedia]:
         try:
-            shortcode = item.get("code")
+            shortcode = item.get("shortcode") or item.get("code")
             if not shortcode:
                 return None
 
-            taken_at_ts = item.get("taken_at")
+            taken_at_ts = item.get("taken_at_timestamp") or item.get("taken_at")
             taken_at = datetime.fromtimestamp(taken_at_ts, tz=timezone.utc) if taken_at_ts else None
 
-            media_type_val = item.get("media_type", 1)
-            media_type_map = {1: "image", 2: "video", 8: "carousel"}
-            media_type = media_type_map.get(media_type_val, "image")
+            typename = item.get("__typename", "")
+            if typename:
+                media_type_map = {"GraphImage": "image", "GraphVideo": "video", "GraphSidecar": "carousel"}
+                media_type = media_type_map.get(typename, "image")
+                media_type_val = {"image": 1, "video": 2, "carousel": 8}.get(media_type, 1)
+            else:
+                media_type_val = item.get("media_type", 1)
+                type_map = {1: "image", 2: "video", 8: "carousel"}
+                media_type = type_map.get(media_type_val, "image")
 
             image_url = None
             if item.get("image_versions2"):
@@ -218,6 +288,10 @@ class InstagramClient:
                 if candidates:
                     sorted_candidates = sorted(candidates, key=lambda c: c.get("width", 0), reverse=True)
                     image_url = sorted_candidates[0].get("url")
+            if not image_url and item.get("display_url"):
+                image_url = item["display_url"]
+            if not image_url and item.get("display_src"):
+                image_url = item["display_src"]
             if not image_url and item.get("carousel_media"):
                 first = item["carousel_media"][0]
                 if first.get("image_versions2"):
@@ -225,16 +299,34 @@ class InstagramClient:
                     if candidates:
                         sorted_candidates = sorted(candidates, key=lambda c: c.get("width", 0), reverse=True)
                         image_url = sorted_candidates[0].get("url")
+            if not image_url and item.get("edge_sidecar_to_children"):
+                edges = item["edge_sidecar_to_children"].get("edges", [])
+                if edges:
+                    node = edges[0].get("node", {})
+                    if node.get("display_url"):
+                        image_url = node["display_url"]
 
             caption = None
             if item.get("caption"):
                 caption = item["caption"].get("text")
+            if not caption and item.get("edge_media_to_caption"):
+                edges = item["edge_media_to_caption"].get("edges", [])
+                if edges:
+                    caption = edges[0].get("node", {}).get("text")
+
+            pk = item.get("pk") or item.get("id")
+            comment_count = item.get("comment_count")
+            if comment_count is None and item.get("edge_media_to_comment"):
+                comment_count = item["edge_media_to_comment"].get("count")
+            like_count = item.get("like_count")
+            if like_count is None and item.get("edge_media_preview_like"):
+                like_count = item["edge_media_preview_like"].get("count")
 
             raw = {
-                "pk": item.get("pk"),
+                "pk": pk,
                 "media_type": media_type_val,
-                "comment_count": item.get("comment_count"),
-                "like_count": item.get("like_count"),
+                "comment_count": comment_count,
+                "like_count": like_count,
                 "has_location": item.get("location") is not None,
                 "location": item.get("location"),
                 "lat": item.get("lat"),
@@ -251,7 +343,7 @@ class InstagramClient:
                 raw_json=raw,
             )
         except Exception as e:
-            logger.warning("Failed to parse media item: {} (pk={})", e, item.get("pk"))
+            logger.warning("Failed to parse media item: {} (pk={})", e, item.get("pk") or item.get("id"))
             return None
 
     async def close(self):
