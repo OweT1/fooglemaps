@@ -1,12 +1,12 @@
-import os
-from typing import Optional
-
 import httpx
 from loguru import logger
+from typing import Optional
+
+from core.settings import settings
 
 
 async def geocode_location(location_name: str) -> tuple[Optional[float], Optional[float], Optional[str]]:
-    api_key = os.getenv("GOOGLE_MAPS_API_KEY")
+    api_key = settings.google_maps_api_key
     if not api_key:
         logger.warning("GOOGLE_MAPS_API_KEY not set, skipping geocoding")
         return None, None, None

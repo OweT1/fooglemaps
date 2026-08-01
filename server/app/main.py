@@ -1,29 +1,26 @@
 import asyncio
-import os
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import utils.logger
 from loguru import logger
 from sqlalchemy import select
 
-load_dotenv()
-
+from core.settings import settings
 from db.session import get_session_factory, close_session_factory
 from db.models import Creator
 from services.ingestor import ingest_creator_posts
 from services.instagram_client import close_client
 from utils.deps import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from .v1.routers import auth, settings, posts, creators, places
+from .v1.routers import auth, settings as settings_router, posts, creators, places
 
-poll_interval_minutes = int(os.getenv("POLL_INTERVAL_MINUTES", "30"))
-posts_per_creator = int(os.getenv("POSTS_PER_CREATOR", "10"))
+poll_interval_minutes = settings.poll_interval_minutes
+posts_per_creator = settings.posts_per_creator
 _scheduler_task = None
 
 async def sync_creators_from_config(session: AsyncSession):
-    raw = os.getenv("INSTAGRAM_CREATORS", "")
+    raw = settings.instagram_creators
     configured_usernames = {u.strip().lower() for u in raw.split(",") if u.strip()}
 
     result = await session.execute(select(Creator))
@@ -95,14 +92,14 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CORS_ORIGIN", "http://localhost:5173")],
+    allow_origins=[settings.cors_origin],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(auth.router, prefix="/api/auth")
-app.include_router(settings.router, prefix="/api/settings")
+app.include_router(settings_router.router, prefix="/api/settings")
 app.include_router(posts.router, prefix="/api/posts")
 app.include_router(creators.router, prefix="/api/creators")
 app.include_router(places.router, prefix="/api/places")

@@ -1,5 +1,4 @@
 import asyncio
-import os
 import re
 import time
 from dataclasses import dataclass
@@ -9,6 +8,8 @@ from typing import Optional
 import httpx
 from httpx_curl_cffi import AsyncCurlTransport
 from loguru import logger
+
+from core.settings import settings
 
 INSTAGRAM_BASE = "https://www.instagram.com"
 INSTAGRAM_API = "https://www.instagram.com/api/v1"
@@ -65,7 +66,7 @@ class InstagramClient:
         if self._loaded:
             return
 
-        session_cookie = os.getenv("INSTAGRAM_SESSION_COOKIE")
+        session_cookie = settings.instagram_session_cookie
         if session_cookie:
             self.client.cookies.set(
                 "sessionid",
@@ -80,8 +81,8 @@ class InstagramClient:
             logger.info("Using provided Instagram session cookie")
             return
 
-        username = os.getenv("INSTAGRAM_USERNAME")
-        password = os.getenv("INSTAGRAM_PASSWORD")
+        username = settings.instagram_username
+        password = settings.instagram_password
         await self._login(username, password)
         self._loaded = True
 
