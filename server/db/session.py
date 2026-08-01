@@ -1,7 +1,7 @@
 from loguru import logger
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from core.settings import settings
+from core import settings
 
 engine = None
 session_factory = None

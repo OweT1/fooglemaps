@@ -3,7 +3,7 @@ from typing import Optional
 
 from loguru import logger
 
-from utils.llm import get_async_openrouter_client
+from utils import get_async_openrouter_client
 
 EXTRACTION_PROMPT = """You are a food location extractor for Singapore. Given an Instagram caption, extract details about the food place being mentioned.
 

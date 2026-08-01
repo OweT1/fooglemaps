@@ -1,7 +1,7 @@
 from loguru import logger
 from openai import AsyncOpenAI
 
-from core.settings import settings
+from core import settings
 
 def get_async_openrouter_client() -> AsyncOpenAI:
   api_key = settings.openrouter_api_key

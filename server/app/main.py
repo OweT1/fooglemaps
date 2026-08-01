@@ -6,14 +6,12 @@ import utils.logger
 from loguru import logger
 from sqlalchemy import select
 
-from core.settings import settings
-from db.session import get_session_factory, close_session_factory
-from db.models import Creator
-from services.ingestor import ingest_creator_posts
-from services.instagram_client import close_client
-from utils.deps import get_session
+from core import settings
+from db import get_session_factory, close_session_factory, Creator
+from services import ingest_creator_posts, close_instagram_client
+from utils import get_db_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from .v1.routers import auth, settings as settings_router, posts, creators, places
+from .v1.routers import auth_router, settings_router, posts_router, creators_router, places_router
 
 poll_interval_minutes = settings.poll_interval_minutes
 posts_per_creator = settings.posts_per_creator
@@ -84,7 +82,7 @@ async def lifespan(app: FastAPI):
             await _scheduler_task
         except asyncio.CancelledError:
             pass
-    await close_client()
+    await close_instagram_client()
     await close_session_factory()
 
 
@@ -98,11 +96,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth")
-app.include_router(settings_router.router, prefix="/api/settings")
-app.include_router(posts.router, prefix="/api/posts")
-app.include_router(creators.router, prefix="/api/creators")
-app.include_router(places.router, prefix="/api/places")
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(settings_router, prefix="/api/settings")
+app.include_router(posts_router, prefix="/api/posts")
+app.include_router(creators_router, prefix="/api/creators")
+app.include_router(places_router, prefix="/api/places")
 
 
 @app.get("/api/health")
@@ -113,7 +111,7 @@ async def health():
 
 @app.post("/api/refresh")
 async def refresh(
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
     logger.info("Manual refresh triggered")
     await sync_creators_from_config(session)

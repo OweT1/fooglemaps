@@ -3,15 +3,14 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.deps import get_session
-from db.constants import CreatorResponse
-from db.models import Creator
+from utils import get_db_session
+from db import CreatorResponse, Creator
 
 router = APIRouter()
 
 
 @router.get("/", response_model=list[CreatorResponse])
-async def list_creators(session: AsyncSession = Depends(get_session)):
+async def list_creators(session: AsyncSession = Depends(get_db_session)):
     logger.debug("Listing creators")
     result = await session.execute(select(Creator).order_by(Creator.created_at.desc()))
     creators = result.scalars().all()

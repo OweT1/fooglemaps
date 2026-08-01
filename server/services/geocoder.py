@@ -2,7 +2,7 @@ import httpx
 from loguru import logger
 from typing import Optional
 
-from core.settings import settings
+from core import settings
 
 
 async def geocode_location(location_name: str) -> tuple[Optional[float], Optional[float], Optional[str]]:

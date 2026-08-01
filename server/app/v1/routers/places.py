@@ -4,15 +4,14 @@ from loguru import logger
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.deps import get_session
-from db.constants import GeoJSONFeature, GeoJSONFeatureCollection, GeoJSONGeometry, PlaceResponse
-from db.models import FoodPlace
+from utils import get_db_session
+from db import GeoJSONFeature, GeoJSONFeatureCollection, GeoJSONGeometry, PlaceResponse, FoodPlace
 
 router = APIRouter()
 
 
 @router.get("/")
-async def list_places(session: AsyncSession = Depends(get_session)):
+async def list_places(session: AsyncSession = Depends(get_db_session)):
     logger.debug("Listing food places as GeoJSON")
     result = await session.execute(
         select(
@@ -52,7 +51,7 @@ async def list_places(session: AsyncSession = Depends(get_session)):
 
 
 @router.get("/{place_id}")
-async def get_place(place_id: str, session: AsyncSession = Depends(get_session)):
+async def get_place(place_id: str, session: AsyncSession = Depends(get_db_session)):
     from uuid import UUID
     result = await session.execute(select(FoodPlace).where(FoodPlace.id == UUID(place_id)))
     p = result.scalar_one_or_none()

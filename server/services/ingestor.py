@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Creator, InstagramPost, FoodPlace
-from services.instagram_client import get_client
+from db import Creator, InstagramPost, FoodPlace
+from services import get_instagram_client
 
 from .extractor import extract_from_caption
 from .geocoder import geocode_location
@@ -17,7 +17,7 @@ async def ingest_creator_posts(creator: Creator, session: AsyncSession, posts_li
     username = creator.username
     logger.info("Starting ingestion for creator: {}", username)
 
-    client = await get_client()
+    client = await get_instagram_client()
     posts_data = await client.fetch_user_posts(username, posts_limit=posts_limit)
 
     ingest_count = 0

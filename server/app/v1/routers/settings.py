@@ -3,9 +3,8 @@ from loguru import logger
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.deps import verify_google_token, get_session
-from db.constants import SettingsResponse, SettingsUpdate
-from db.models import User, UserSettings
+from utils import verify_google_token, get_db_session
+from db import SettingsResponse, SettingsUpdate, User, UserSettings
 
 router = APIRouter()
 
@@ -14,7 +13,7 @@ router = APIRouter()
 async def update_settings(
     updates: SettingsUpdate,
     user_info: dict = Depends(verify_google_token),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
     sub = user_info["sub"]
     logger.info("Updating settings for sub={}", sub)

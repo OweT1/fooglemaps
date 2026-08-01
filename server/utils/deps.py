@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.session import get_session_factory
+from db import get_session_factory
 
 security = HTTPBearer(auto_error=False)
 
@@ -32,7 +32,7 @@ async def verify_google_token(credentials=Depends(security)):
         raise HTTPException(status_code=401, detail="Token verification failed")
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     factory = await get_session_factory()
     async with factory() as session:
         logger.trace("DB session yielded")

@@ -63,7 +63,7 @@ fooglemaps/
 │   │   ├── main.py          # FastAPI app, lifespan, CORS, routers
 │   │   ├── db.py            # SQLAlchemy async engine / session factory
 │   │   ├── models.py        # SQLAlchemy ORM models + Pydantic schemas
-│   │   ├── deps.py          # Dependencies (auth, get_session)
+│   │   ├── deps.py          # Dependencies (auth, get_db_session)
 │   │   └── routers/
 │   │       ├── auth.py      # POST /api/auth/login, GET /api/auth/me
 │   │       └── settings.py  # PUT /api/settings/

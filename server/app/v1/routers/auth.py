@@ -4,9 +4,8 @@ from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.deps import verify_google_token, get_session
-from db.constants import LoginResponse, UserResponse, SettingsResponse
-from db.models import User, UserSettings
+from utils import verify_google_token, get_db_session
+from db import LoginResponse, UserResponse, SettingsResponse, User, UserSettings
 
 router = APIRouter()
 
@@ -14,7 +13,7 @@ router = APIRouter()
 @router.post("/login", response_model=LoginResponse)
 async def login(
     user_info: dict = Depends(verify_google_token),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
     sub = user_info["sub"]
     email = user_info["email"]
@@ -60,7 +59,7 @@ async def login(
 @router.get("/me", response_model=LoginResponse)
 async def me(
     user_info: dict = Depends(verify_google_token),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db_session),
 ):
     sub = user_info["sub"]
     logger.debug("Fetching user info: sub={}", sub)

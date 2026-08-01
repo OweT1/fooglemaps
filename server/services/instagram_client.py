@@ -9,7 +9,7 @@ import httpx
 from httpx_curl_cffi import AsyncCurlTransport
 from loguru import logger
 
-from core.settings import settings
+from core import settings
 
 INSTAGRAM_BASE = "https://www.instagram.com"
 INSTAGRAM_API = "https://www.instagram.com/api/v1"
