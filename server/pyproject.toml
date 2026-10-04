@@ -18,7 +18,10 @@ dependencies = [
     "httpx-curl-cffi>=0.1.5",
     "geoalchemy2>=0.14.0",
     "openai>=1.0.0",
+    "instagrapi>=3.0.20",
 ]
 
 [dependency-groups]
-dev = []
+dev = [
+    "ipykernel>=7.3.0",
+]
