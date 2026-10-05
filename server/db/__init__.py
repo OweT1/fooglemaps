@@ -5,13 +5,14 @@ from .constants import (
     LoginResponse,
     SettingsUpdate,
     CreatorResponse,
+    CuisineResponse,
     InstagramPostResponse,
     GeoJSONGeometry,
     GeoJSONFeature,
     GeoJSONFeatureCollection,
     PlaceResponse,
 )
-from .models import Base, User, UserSettings, Creator, InstagramPost, FoodPlace
+from .models import Base, User, UserSettings, Creator, InstagramPost, FoodPlace, Cuisine
 
 __all__ = [
     "get_database_url",
@@ -22,6 +23,7 @@ __all__ = [
     "LoginResponse",
     "SettingsUpdate",
     "CreatorResponse",
+    "CuisineResponse",
     "InstagramPostResponse",
     "GeoJSONGeometry",
     "GeoJSONFeature",
@@ -33,4 +35,5 @@ __all__ = [
     "Creator",
     "InstagramPost",
     "FoodPlace",
+    "Cuisine",
 ]
