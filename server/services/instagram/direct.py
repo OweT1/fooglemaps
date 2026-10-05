@@ -242,6 +242,10 @@ class DirectInstagramClient(InstagramClient):
                 "taken_at": m.taken_at,
                 "media_type": m.media_type,
                 "raw_json": m.raw_json,
+                "location_name": m.location_name,
+                "lat": m.lat,
+                "lng": m.lng,
+                "location_external_id": m.location_external_id,
             }
             for m in all_media[:posts_limit]
         ]
@@ -305,6 +309,14 @@ class DirectInstagramClient(InstagramClient):
             if like_count is None and item.get("edge_media_preview_like"):
                 like_count = item["edge_media_preview_like"].get("count")
 
+            location = item.get("location") or {}
+            location_lat = location.get("lat")
+            location_lng = location.get("lng")
+            if location_lat is None:
+                location_lat = item.get("lat")
+            if location_lng is None:
+                location_lng = item.get("lng")
+
             raw = {
                 "pk": pk,
                 "media_type": media_type_val,
@@ -312,8 +324,8 @@ class DirectInstagramClient(InstagramClient):
                 "like_count": like_count,
                 "has_location": item.get("location") is not None,
                 "location": item.get("location"),
-                "lat": item.get("lat"),
-                "lng": item.get("lng"),
+                "lat": location_lat,
+                "lng": location_lng,
             }
 
             return InstagramMedia(
@@ -324,6 +336,12 @@ class DirectInstagramClient(InstagramClient):
                 taken_at=taken_at,
                 media_type=media_type,
                 raw_json=raw,
+                location_name=location.get("name") or None,
+                lat=float(location_lat) if location_lat is not None else None,
+                lng=float(location_lng) if location_lng is not None else None,
+                location_external_id=(
+                    str(location["pk"]) if location.get("pk") is not None else None
+                ),
             )
         except Exception as e:
             logger.warning("Failed to parse media item: {} (pk={})", e, item.get("pk") or item.get("id"))

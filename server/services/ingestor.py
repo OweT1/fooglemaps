@@ -44,21 +44,25 @@ async def ingest_creator_posts(creator: Creator, session: AsyncSession, posts_li
         session.add(db_post)
         await session.flush()
 
-        place_name = None
+        place_name = data.get("location_name")
         address = None
         cuisine_tags = None
 
         if data["caption"]:
             extracted = await extract_from_caption(data["caption"])
-            place_name = extracted.get("place_name")
+            if not place_name:
+                place_name = extracted.get("place_name")
             address = extracted.get("address")
             cuisine_tags = extracted.get("cuisine")
 
-        lat, lng = None, None
-        if place_name:
-            lat, lng, geocoded_address = await geocode_location(f"{place_name}, Singapore")
-            if not address:
-                address = geocoded_address
+        lat = data.get("lat")
+        lng = data.get("lng")
+        if lat is None or lng is None:
+            lat, lng = None, None
+            if place_name:
+                lat, lng, geocoded_address = await geocode_location(f"{place_name}, Singapore")
+                if not address:
+                    address = geocoded_address
 
         if place_name and lat is not None and lng is not None:
             geom_wkt = WKTElement(f"POINT({lng} {lat})", srid=4326)

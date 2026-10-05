@@ -12,6 +12,10 @@ class InstagramMedia:
     taken_at: Optional[datetime]
     media_type: str
     raw_json: dict
+    location_name: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    location_external_id: Optional[str] = None
 
 
 @dataclass

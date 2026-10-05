@@ -97,6 +97,10 @@ class InstagrapiClient(InstagramClient):
                 "taken_at": m.taken_at,
                 "media_type": m.media_type,
                 "raw_json": m.raw_json,
+                "location_name": m.location_name,
+                "lat": m.lat,
+                "lng": m.lng,
+                "location_external_id": m.location_external_id,
             }
             for m in all_media[:posts_limit]
         ]
@@ -132,10 +136,40 @@ class InstagrapiClient(InstagramClient):
 
             pk = getattr(media, "pk", None) or getattr(media, "id", None)
 
+            location = getattr(media, "location", None)
+            location_dict = None
+            if location is not None:
+                for attr in ("model_dump", "dict", "to_dict"):
+                    method = getattr(location, attr, None)
+                    if callable(method):
+                        try:
+                            location_dict = method()
+                        except Exception:
+                            location_dict = None
+                        break
+                if location_dict is None:
+                    location_dict = {
+                        "pk": getattr(location, "pk", None),
+                        "name": getattr(location, "name", None),
+                        "lat": getattr(location, "lat", None),
+                        "lng": getattr(location, "lng", None),
+                    }
+
+            location_lat = (location_dict or {}).get("lat")
+            location_lng = (location_dict or {}).get("lng")
+            if location_lat is None:
+                location_lat = getattr(media, "lat", None)
+            if location_lng is None:
+                location_lng = getattr(media, "lng", None)
+
             raw = {
                 "pk": str(pk) if pk is not None else None,
                 "media_type": media_type,
                 "code": shortcode,
+                "has_location": location is not None,
+                "location": location_dict,
+                "lat": location_lat,
+                "lng": location_lng,
             }
 
             return InstagramMedia(
@@ -146,6 +180,14 @@ class InstagrapiClient(InstagramClient):
                 taken_at=taken_at,
                 media_type=media_type_str,
                 raw_json=raw,
+                location_name=(location_dict or {}).get("name") or None,
+                lat=float(location_lat) if location_lat is not None else None,
+                lng=float(location_lng) if location_lng is not None else None,
+                location_external_id=(
+                    str(location_dict["pk"])
+                    if location_dict and location_dict.get("pk") is not None
+                    else None
+                ),
             )
         except Exception as e:
             logger.warning("Failed to parse media item: {}", e)
