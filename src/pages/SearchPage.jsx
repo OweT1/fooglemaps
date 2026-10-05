@@ -1,6 +1,12 @@
+import { useState } from "react";
+
 import PageContainer from "../components/PageContainer";
+import { useCuisines } from "../context/CuisineContext";
 
 export default function SearchPage() {
+  const { cuisines, loading } = useCuisines();
+  const [cuisine, setCuisine] = useState("");
+
   return (
     <PageContainer title="Search" subtitle="Find food places by name, cuisine, or location">
       <div className="max-w-[600px]">
@@ -13,12 +19,18 @@ export default function SearchPage() {
             <input type="text" placeholder="Search by name, cuisine..." className="w-full h-[42px] pl-[38px] pr-3 border border-border rounded-md bg-surface-secondary text-sm outline-none focus:border-primary focus:bg-surface focus:ring-[3px] focus:ring-primary/10" />
           </div>
           <div className="flex gap-2">
-            <select defaultValue="" className="flex-1 h-[38px] px-2.5 border border-border rounded-sm bg-surface text-[13px] outline-none">
+            <select
+              value={cuisine}
+              onChange={(e) => setCuisine(e.target.value)}
+              disabled={loading}
+              className="flex-1 h-[38px] px-2.5 border border-border rounded-sm bg-surface text-[13px] outline-none disabled:opacity-60"
+            >
               <option value="" disabled>Cuisine</option>
-              <option value="hawker">Hawker</option>
-              <option value="chinese">Chinese</option>
-              <option value="indian">Indian</option>
-              <option value="satay">Satay</option>
+              {cuisines.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
             <select defaultValue="" className="flex-1 h-[38px] px-2.5 border border-border rounded-sm bg-surface text-[13px] outline-none">
               <option value="" disabled>Location</option>
