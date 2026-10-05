@@ -8,9 +8,9 @@ from loguru import logger
 
 from core import settings
 from .commons import InstagramMedia, InstagramUser
+from .client import InstagramClient
 
-
-class InstagramClient:
+class InstagrapiClient(InstagramClient):
     def __init__(self) -> None:
         self._client = Client()
         self._logged_in = False
@@ -65,13 +65,15 @@ class InstagramClient:
             user_id = user.pk
 
         try:
-            medias = self._client.user_medias(user_id, amount=count)
+            medias, next_cursor = self._client.user_medias_paginated(
+                user_id, amount=count, end_cursor=max_id or ""
+            )
             media_list = []
             for media in medias:
                 parsed = self._parse_media_item(media)
                 if parsed:
                     media_list.append(parsed)
-            return media_list, None
+            return media_list, next_cursor or None
         except Exception as e:
             logger.error("Failed to fetch user media for {}: {}", username_or_id, e)
             raise
@@ -162,7 +164,7 @@ _instance: Optional[InstagramClient] = None
 async def get_client() -> InstagramClient:
     global _instance
     if _instance is None:
-        _instance = InstagramClient()
+        _instance = InstagrapiClient()
     await _instance._ensure_session()
     return _instance
 

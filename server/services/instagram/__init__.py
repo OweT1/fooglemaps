@@ -3,7 +3,7 @@ from .commons import (
   InstagramUser
 )
 from .instagrapi import (
-    InstagramClient,
+    InstagrapiClient,
     get_client,
     close_client,
     get_instagram_client,
@@ -11,7 +11,7 @@ from .instagrapi import (
 )
 
 __all__ = [
-    "InstagramClient",
+    "InstagrapiClient",
     "InstagramMedia",
     "InstagramUser",
     "get_client",

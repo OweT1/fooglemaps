@@ -11,13 +11,14 @@ from loguru import logger
 from core import settings
 
 from .commons import InstagramMedia, InstagramUser
+from .client import InstagramClient
 
 INSTAGRAM_BASE = "https://www.instagram.com"
 INSTAGRAM_API = "https://www.instagram.com/api/v1"
 WEB_APP_ID = "936619743392459"
 
 
-class InstagramClient:
+class DirectInstagramClient(InstagramClient):
     def __init__(self):
         self.client = httpx.AsyncClient(
             base_url=INSTAGRAM_BASE,
@@ -338,7 +339,7 @@ _instance: Optional[InstagramClient] = None
 async def get_client() -> InstagramClient:
     global _instance
     if _instance is None:
-        _instance = InstagramClient()
+        _instance = DirectInstagramClient()
     await _instance._ensure_session()
     return _instance
 

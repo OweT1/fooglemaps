@@ -1,5 +1,5 @@
 from .instagram.instagrapi import (
-    InstagramClient,
+    InstagrapiClient,
     InstagramMedia,
     InstagramUser,
     get_client as get_instagram_client,
@@ -10,7 +10,7 @@ from .geocoder import geocode_location
 from .ingestor import ingest_creator_posts
 
 __all__ = [
-    "InstagramClient",
+    "InstagrapiClient",
     "InstagramMedia",
     "InstagramUser",
     "get_instagram_client",
