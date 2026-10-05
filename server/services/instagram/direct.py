@@ -1,7 +1,6 @@
 import asyncio
 import re
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -11,32 +10,15 @@ from loguru import logger
 
 from core import settings
 
+from .commons import InstagramMedia, InstagramUser
+from .client import InstagramClient
+
 INSTAGRAM_BASE = "https://www.instagram.com"
 INSTAGRAM_API = "https://www.instagram.com/api/v1"
 WEB_APP_ID = "936619743392459"
 
 
-@dataclass
-class InstagramMedia:
-    shortcode: str
-    caption: Optional[str]
-    image_url: Optional[str]
-    post_url: str
-    taken_at: Optional[datetime]
-    media_type: str
-    raw_json: dict
-
-
-@dataclass
-class InstagramUser:
-    pk: str
-    username: str
-    full_name: Optional[str]
-    profile_pic_url: Optional[str]
-    is_private: bool
-
-
-class InstagramClient:
+class DirectInstagramClient(InstagramClient):
     def __init__(self):
         self.client = httpx.AsyncClient(
             base_url=INSTAGRAM_BASE,
@@ -260,6 +242,10 @@ class InstagramClient:
                 "taken_at": m.taken_at,
                 "media_type": m.media_type,
                 "raw_json": m.raw_json,
+                "location_name": m.location_name,
+                "lat": m.lat,
+                "lng": m.lng,
+                "location_external_id": m.location_external_id,
             }
             for m in all_media[:posts_limit]
         ]
@@ -323,6 +309,14 @@ class InstagramClient:
             if like_count is None and item.get("edge_media_preview_like"):
                 like_count = item["edge_media_preview_like"].get("count")
 
+            location = item.get("location") or {}
+            location_lat = location.get("lat")
+            location_lng = location.get("lng")
+            if location_lat is None:
+                location_lat = item.get("lat")
+            if location_lng is None:
+                location_lng = item.get("lng")
+
             raw = {
                 "pk": pk,
                 "media_type": media_type_val,
@@ -330,8 +324,8 @@ class InstagramClient:
                 "like_count": like_count,
                 "has_location": item.get("location") is not None,
                 "location": item.get("location"),
-                "lat": item.get("lat"),
-                "lng": item.get("lng"),
+                "lat": location_lat,
+                "lng": location_lng,
             }
 
             return InstagramMedia(
@@ -342,6 +336,12 @@ class InstagramClient:
                 taken_at=taken_at,
                 media_type=media_type,
                 raw_json=raw,
+                location_name=location.get("name") or None,
+                lat=float(location_lat) if location_lat is not None else None,
+                lng=float(location_lng) if location_lng is not None else None,
+                location_external_id=(
+                    str(location["pk"]) if location.get("pk") is not None else None
+                ),
             )
         except Exception as e:
             logger.warning("Failed to parse media item: {} (pk={})", e, item.get("pk") or item.get("id"))
@@ -357,7 +357,7 @@ _instance: Optional[InstagramClient] = None
 async def get_client() -> InstagramClient:
     global _instance
     if _instance is None:
-        _instance = InstagramClient()
+        _instance = DirectInstagramClient()
     await _instance._ensure_session()
     return _instance
 
