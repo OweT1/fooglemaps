@@ -12,7 +12,7 @@ from .constants import (
     GeoJSONFeatureCollection,
     PlaceResponse,
 )
-from .models import Base, User, UserSettings, Creator, InstagramPost, FoodPlace, Cuisine
+from .models import Base, User, UserSettings, Creator, InstagramPost, FoodPlace, FoodPlaceCuisine, Cuisine
 
 __all__ = [
     "get_database_url",
@@ -35,5 +35,6 @@ __all__ = [
     "Creator",
     "InstagramPost",
     "FoodPlace",
+    "FoodPlaceCuisine",
     "Cuisine",
 ]

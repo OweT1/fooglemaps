@@ -6,11 +6,27 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db import Creator, InstagramPost, FoodPlace
+from db import Creator, InstagramPost, FoodPlace, FoodPlaceCuisine
 from services import get_instagram_client
 
+from .cuisines import CUISINES_LOOKUP, MAX_CUISINES_PER_PLACE
 from .extractor import extract_from_caption
 from .geocoder import geocode_location
+
+
+def _known_cuisines(values: object) -> list[str]:
+    if not isinstance(values, list):
+        return []
+
+    matched: list[str] = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        canonical = CUISINES_LOOKUP.get(value.strip().lower())
+        if canonical and canonical not in matched:
+            matched.append(canonical)
+
+    return matched[:MAX_CUISINES_PER_PLACE]
 
 
 async def ingest_creator_posts(creator: Creator, session: AsyncSession, posts_limit: int = 10) -> int:
@@ -66,16 +82,38 @@ async def ingest_creator_posts(creator: Creator, session: AsyncSession, posts_li
 
         if place_name and lat is not None and lng is not None:
             geom_wkt = WKTElement(f"POINT({lng} {lat})", srid=4326)
-            place_stmt = pg_insert(FoodPlace).values(
-                name=place_name,
-                address=address,
-                geom=geom_wkt,
-                cuisine_tags=cuisine_tags,
-                source_post_id=db_post.id,
-            ).on_conflict_do_nothing(
-                index_elements=["name"]
+            place_stmt = (
+                pg_insert(FoodPlace)
+                .values(
+                    name=place_name,
+                    address=address,
+                    geom=geom_wkt,
+                    source_post_id=db_post.id,
+                )
+                .on_conflict_do_nothing(index_elements=["name"])
+                .returning(FoodPlace.id)
             )
-            await session.execute(place_stmt)
+            result = await session.execute(place_stmt)
+            place_id = result.scalar_one_or_none()
+
+            known = _known_cuisines(cuisine_tags)
+            if len(known) != len(cuisine_tags or []):
+                logger.warning(
+                    "Dropped unknown cuisines for '{}': {}",
+                    place_name,
+                    [c for c in (cuisine_tags or []) if c not in known],
+                )
+
+            if place_id is not None and known:
+                link_stmt = (
+                    pg_insert(FoodPlaceCuisine)
+                    .values([
+                        {"place_id": place_id, "cuisine_name": name}
+                        for name in known
+                    ])
+                    .on_conflict_do_nothing(index_elements=["place_id", "cuisine_name"])
+                )
+                await session.execute(link_stmt)
 
         ingest_count += 1
         logger.debug("Ingested post {} by {}: place={}", shortcode, username, place_name)
