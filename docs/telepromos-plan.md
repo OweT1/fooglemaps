@@ -59,7 +59,7 @@ fooglemaps/
 | Bot | Lightweight httpx Bot API calls (no framework): `/start` + inline `web_app` button, `setChatMenuButton`, webhook with secret token |
 | Notifications | After deals ingestion → `sendMessage` to `telegram_users` with `notify_enabled` (rate-limited) |
 | Deals sources | `INSTAGRAM_DEAL_CREATORS` env → `deal_sources` table, polled independently of fooglemaps creators |
-| Deployment | Single Fly app + managed Postgres (host decision below) |
+| Deployment | Single Fly app + **Fly managed Postgres** (PostGIS); the existing fooglemaps web app stays **local-only for now** — the `/fooglemaps/` gateway mount is deferred |
 
 ## Phases
 
@@ -134,14 +134,16 @@ Verification: `uv sync`, `uv run` import of `fooglemaps.main` (12 routes), `alem
 
 ### 6. Fly.io deployment
 
-- Multi-stage `Dockerfile`: Node builds both frontends → `uv sync` → runtime image;
-  `gateway` serves `telepromos` dist at `/` and `fooglemaps` dist at `/fooglemaps/`,
-  both apps' lifespans (ingestion loops) started by the gateway
+- Multi-stage `Dockerfile`: Node builds the telepromos frontend → `uv sync` →
+  runtime image; the `telepromos` FastAPI app serves its `dist/` at `/` plus the
+  API and bot webhook
 - `fly.toml` + `fly secrets set TELEGRAM_BOT_TOKEN=… GOOGLE_MAPS_API_KEY=…` etc.;
-  one Fly Postgres (or external) with PostGIS
+  Fly managed Postgres (enable PostGIS) — or fall back to an external host if
+  PostGIS is unavailable
 - `setWebhook` to `https://<app>.fly.dev/telegram/webhook`
-- Open item: confirm PostGIS availability on the chosen Postgres host
-  (Fly Postgres vs Neon vs Supabase)
+- The fooglemaps backend/web app remain local-only for now; if we later want them
+  public, add the `gateway` step (mount `fooglemaps` at `/fooglemaps/` with a
+  Vite `base` + prefixed API calls)
 
 ### 7. Docs + Justfile polish
 
@@ -161,9 +163,19 @@ Verification: `uv sync`, `uv run` import of `fooglemaps.main` (12 routes), `alem
 - **Scope**: phases 2 and 3 are the critical path; the mini app (5) can be built
   against fixture data in parallel with 3–4
 
-## Needed from the team
+## Task inputs
 
-- BotFather bot created (`/newbot`) + token
-- Postgres host for Fly (needs PostGIS): Fly-managed vs Neon
-- Whether the existing fooglemaps web app should be publicly exposed at
-  `/fooglemaps/` in production, or stays local-only for now
+Required as we build:
+
+- **BotFather bot** (`/newbot`) + `TELEGRAM_BOT_TOKEN`
+- **Mini App registration** (BotFather `/newapp` or menu button) + `TELEGRAM_APP_URL`
+- **`INSTAGRAM_DEAL_CREATORS`** — comma-separated Instagram accounts that post
+  Singapore food deals/promos
+- `TELEGRAM_WEBHOOK_SECRET` (generate with `openssl rand -hex 32`)
+
+## Decisions (resolved)
+
+| Question | Answer |
+|---|---|
+| Production Postgres | **Fly managed Postgres** with PostGIS |
+| fooglemaps web app on Fly | **Local-only for now**; only TelePromos deploys |

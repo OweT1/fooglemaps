@@ -36,23 +36,21 @@ This starts a PostgreSQL 16 container on port 5432.
 
 ### 3. Running the app
 
-You'll need **two terminals** — one for the backend and one for the frontend.
+FoogleMaps and TelePromos each need **their own backend + frontend terminal pair**.
 
-#### Terminal 1 — Backend
-
-```bash
-just backend
-```
-
-The API will be available at `http://localhost:8000`.
-
-#### Terminal 2 — Frontend
+#### FoogleMaps
 
 ```bash
-just frontend
+just backend          # Term 1 — API at http://localhost:8000
+just frontend         # Term 2 — app at http://localhost:5173
 ```
 
-The app will be available at `http://localhost:5173`.
+#### TelePromos
+
+```bash
+just backend-telepromos  # Term 1 — API at http://localhost:8001
+# Term 2 — frontend/telepromos mini app (scaffolded in a later phase)
+```
 
 ## Project structure
 
@@ -73,11 +71,17 @@ fooglemaps/
 │   │   ├── models/           # SQLAlchemy ORM models
 │   │   ├── routers/          # auth, settings, posts, creators, places, cuisines
 │   │   └── services/         # ingestor, extractor, cuisines
+│   ├── telepromos/           # TelePromos FastAPI app (Telegram Mini App backend)
+│   │   ├── main.py           # app, lifespan, CORS (localhost:5174), routers
+│   │   ├── schemas.py        # Deal + GeoJSON response models
+│   │   ├── models/           # deal_sources, deal_posts, deals, telegram_users
+│   │   └── routers/          # deals (list + detail)
 │   ├── alembic/              # Database migrations
 │   ├── pyproject.toml
 │   └── alembic.ini
 ├── frontend/
-│   └── fooglemaps/           # React + Vite web app (src/, index.html, configs)
+│   ├── fooglemaps/           # React + Vite web app (src/, index.html, configs)
+│   └── telepromos/           # Telegram Mini App (planned — React + Vite + Leaflet)
 ├── docker-compose.yml       # PostgreSQL + PostGIS service
 └── .env.example
 ```
@@ -91,6 +95,7 @@ fooglemaps/
 | `cd backend && uv run alembic upgrade head`            | Apply migrations              |
 | `cd backend && uv run alembic revision --autogenerate -m "desc"` | Generate a migration  |
 | `cd backend && uv run alembic downgrade -1`            | Rollback last migration       |
-| `cd backend && uv run uvicorn fooglemaps.main:app --reload` | Start backend dev server |
+| `cd backend && uv run uvicorn fooglemaps.main:app --reload` | Start FoogleMaps backend dev server |
+| `cd backend && uv run uvicorn telepromos.main:app --reload --port 8001` | Start TelePromos backend dev server |
 | `cd frontend/fooglemaps && npm run dev`                | Start frontend dev server     |
 | `cd frontend/fooglemaps && npm run build`              | Build frontend for production |

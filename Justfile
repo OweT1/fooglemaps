@@ -11,7 +11,13 @@ backend-sync:
   cd backend && uv sync --all-extras
 
 backend:
-  cd backend && just backend-sync && uv run alembic upgrade head && uv run uvicorn fooglemaps.main:app --reload
+  just backend-fooglemaps
+
+backend-fooglemaps:
+  cd backend && just backend-sync && uv run alembic upgrade head && uv run uvicorn fooglemaps.main:app --reload --port 8000
+
+backend-telepromos:
+  cd backend && just backend-sync && uv run alembic upgrade head && uv run uvicorn telepromos.main:app --reload --port 8001
 
 frontend:
   cd frontend/fooglemaps && npm install && npm run dev
