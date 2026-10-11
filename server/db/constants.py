@@ -42,6 +42,10 @@ class CreatorResponse(BaseModel):
     created_at: datetime
 
 
+class CuisineResponse(BaseModel):
+    name: str
+
+
 class InstagramPostResponse(BaseModel):
     id: str
     shortcode: str

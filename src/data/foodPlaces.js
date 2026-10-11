@@ -9,7 +9,7 @@ const foodPlaces = [
     name: "Lau Pa Sat",
     lat: 1.276,
     lng: 103.8512,
-    cuisine: ["Hawker", "Satay"],
+    cuisine: ["Hawker", "BBQ"],
   },
   {
     name: "Chinatown Complex Food Centre",
@@ -27,7 +27,7 @@ const foodPlaces = [
     name: "Old Airport Road Food Centre",
     lat: 1.3205,
     lng: 103.9088,
-    cuisine: ["Hawker", "Various"],
+    cuisine: ["Hawker", "Food Court"],
   },
 ];
 

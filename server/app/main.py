@@ -11,7 +11,7 @@ from db import get_session_factory, close_session_factory, Creator
 from services import ingest_creator_posts, close_instagram_client
 from utils import get_db_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from .v1.routers import auth_router, settings_router, posts_router, creators_router, places_router
+from .v1.routers import auth_router, settings_router, posts_router, creators_router, places_router, cuisines_router
 
 poll_interval_minutes = settings.poll_interval_minutes
 posts_per_creator = settings.posts_per_creator
@@ -101,6 +101,7 @@ app.include_router(settings_router, prefix="/api/settings")
 app.include_router(posts_router, prefix="/api/posts")
 app.include_router(creators_router, prefix="/api/creators")
 app.include_router(places_router, prefix="/api/places")
+app.include_router(cuisines_router, prefix="/api/cuisines")
 
 
 @app.get("/api/health")
