@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Fooglemaps is a Google‑Maps‑style web application that displays Singapore food spots on an interactive map. Users can search by cuisine/location, save favorites, and customize their experience. Data is currently static (hardcoded in `src/data/foodPlaces.js`) with plans to ingest from Instagram in the future.
+Fooglemaps is a Google‑Maps‑style web application that displays Singapore food spots on an interactive map. Users can search by cuisine/location, save favorites, and customize their experience. Data is currently static (hardcoded in `frontend/fooglemaps/src/data/foodPlaces.js`) with plans to ingest from Instagram in the future.
 
 ## 2. Architecture
 
@@ -109,7 +109,7 @@ Fooglemaps is a Google‑Maps‑style web application that displays Singapore fo
 
 ## 8. Current Limitations / Future Work
 
-- **Static data**: Food places are hardcoded in `src/data/foodPlaces.js` (5 entries). See `docs/instagram-ingestion.md` for the planned ingestion pipeline.
+- **Static data**: Food places are hardcoded in `frontend/fooglemaps/src/data/foodPlaces.js` (5 entries). See `docs/instagram-ingestion.md` for the planned ingestion pipeline.
 - **No spatial queries**: PostgreSQL does not have PostGIS installed; no spatial data types are used.
 - **No recommendations**: A recommendation service (Redis + ML) is planned but not implemented.
 - **No refresh tokens**: The current flow requires re-authentication when the Google access token expires.

@@ -90,8 +90,8 @@ This document describes the layout for the Fooglemaps web application built with
 
 ## Styling Approach
 - **Tailwind CSS** for utility-first styling
-- **CSS custom properties** defined in `src/index.css` for light/dark theme variables
-- **Tailwind config** extended with custom colors (`primary`, `surface`, `content`, `border`, `sidebar`, `header`, `card`) and spacing (`header`, `sidebar`, `sidebar-sm`, `footer`) from `src/themes/*`
+- **CSS custom properties** defined in `frontend/fooglemaps/src/index.css` for light/dark theme variables
+- **Tailwind config** extended with custom colors (`primary`, `surface`, `content`, `border`, `sidebar`, `header`, `card`) and spacing (`header`, `sidebar`, `sidebar-sm`, `footer`) from `frontend/fooglemaps/src/themes/*`
 - **Dark mode** via `data-theme` selector (Tailwind `darkMode: 'selector'`)
 - **CSS variables** toggled via `[data-theme="dark"]` and `[data-theme="light"]` selectors
 
