@@ -8,11 +8,10 @@ docker-db-it:
   docker exec -it fooglemaps-db psql -U fooglemaps
 
 backend-sync:
-  cd server && uv sync --all-extras
+  cd backend && uv sync --all-extras
 
 backend:
-  cd server && just backend-sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
+  cd backend && just backend-sync && uv run alembic upgrade head && uv run uvicorn fooglemaps.main:app --reload
 
 frontend:
-  npm install
-  npm run dev
+  cd frontend/fooglemaps && npm install && npm run dev

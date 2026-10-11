@@ -58,37 +58,39 @@ The app will be available at `http://localhost:5173`.
 
 ```
 fooglemaps/
-├── server/                  # FastAPI backend
-│   ├── app/
-│   │   ├── main.py          # FastAPI app, lifespan, CORS, routers
-│   │   ├── db.py            # SQLAlchemy async engine / session factory
-│   │   ├── models.py        # SQLAlchemy ORM models + Pydantic schemas
-│   │   ├── deps.py          # Dependencies (auth, get_db_session)
-│   │   └── routers/
-│   │       ├── auth.py      # POST /api/auth/login, GET /api/auth/me
-│   │       └── settings.py  # PUT /api/settings/
-│   ├── alembic/             # Database migrations
-│   ├── db/init.sql          # Initial schema (used by docker compose)
+├── backend/                  # Python monorepo (uv project)
+│   ├── commons/              # Shared code between apps
+│   │   ├── settings.py       # Base pydantic-settings (reads repo-root .env)
+│   │   ├── db/               # Async engine, session factory, Base, get_db_session
+│   │   ├── instagram/        # instagrapi / direct Instagram clients
+│   │   ├── geocoder.py       # Google Geocoding (httpx)
+│   │   ├── llm.py            # OpenRouter client factory
+│   │   └── logger.py         # Loguru setup
+│   ├── fooglemaps/           # FoogleMaps FastAPI app
+│   │   ├── main.py           # app, lifespan (ingestion loop), CORS, routers
+│   │   ├── deps.py           # verify_google_token
+│   │   ├── schemas.py        # Pydantic response models
+│   │   ├── models/           # SQLAlchemy ORM models
+│   │   ├── routers/          # auth, settings, posts, creators, places, cuisines
+│   │   └── services/         # ingestor, extractor, cuisines
+│   ├── alembic/              # Database migrations
 │   ├── pyproject.toml
 │   └── alembic.ini
-├── src/                     # React frontend
-│   ├── components/
-│   ├── context/             # Auth, Theme, Sidebar state
-│   ├── pages/               # Home, Maps, Search, Saved, Settings, SignIn
-│   └── config/
-├── docker-compose.yml       # PostgreSQL service
+├── frontend/
+│   └── fooglemaps/           # React + Vite web app (src/, index.html, configs)
+├── docker-compose.yml       # PostgreSQL + PostGIS service
 └── .env.example
 ```
 
 ## Useful commands
 
-| Command                                            | Description                   |
-| -------------------------------------------------- | ----------------------------- |
-| `docker compose up -d`                             | Start PostgreSQL              |
-| `docker compose down`                              | Stop PostgreSQL               |
-| `uv run alembic upgrade head`                      | Apply migrations              |
-| `uv run alembic revision --autogenerate -m "desc"` | Generate a migration          |
-| `uv run alembic downgrade -1`                      | Rollback last migration       |
-| `uv run uvicorn app.main:app --reload`             | Start backend dev server      |
-| `npm run dev`                                      | Start frontend dev server     |
-| `npm run build`                                    | Build frontend for production |
+| Command                                                | Description                   |
+| ------------------------------------------------------ | ----------------------------- |
+| `docker compose up -d`                                 | Start PostgreSQL              |
+| `docker compose down`                                  | Stop PostgreSQL               |
+| `cd backend && uv run alembic upgrade head`            | Apply migrations              |
+| `cd backend && uv run alembic revision --autogenerate -m "desc"` | Generate a migration  |
+| `cd backend && uv run alembic downgrade -1`            | Rollback last migration       |
+| `cd backend && uv run uvicorn fooglemaps.main:app --reload` | Start backend dev server |
+| `cd frontend/fooglemaps && npm run dev`                | Start frontend dev server     |
+| `cd frontend/fooglemaps && npm run build`              | Build frontend for production |

@@ -30,4 +30,8 @@ coverage/
 # Python
 __pycache__/
 *.pyc
-server/.venv/
+backend/.venv/
+.venv/
+
+# Notebooks
+backend/notebooks/
