@@ -15,6 +15,7 @@ if config.config_file_name is not None:
 
 from commons.db import Base
 import fooglemaps.models  # noqa: F401  (registers tables on Base.metadata)
+import telepromos.models  # noqa: F401  (registers tables on Base.metadata)
 target_metadata = Base.metadata
 
 logger.info("Alembic migration environment loaded")

@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     instagram_creators: str = ""
     cors_origin: str = "http://localhost:5173"
 
+    instagram_deal_creators: str = ""
+
+    telegram_bot_token: str | None = None
+    telegram_webhook_secret: str | None = None
+    telegram_app_url: str = "http://localhost:5174"
+    telepromos_cors_origin: str = "http://localhost:5174"
+
     postgres_url: str | None = None
     postgres_user: str | None = None
     postgres_password: str | None = None
