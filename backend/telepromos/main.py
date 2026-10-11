@@ -5,18 +5,59 @@ import commons.logger  # noqa: F401  (configures loguru)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from commons import settings
 from commons.db import get_session_factory, close_session_factory
-from telepromos.routers import deals_router
+from commons.instagram import close_instagram_client
+from telepromos.models import DealSource
+from telepromos.routers import deals_router, refresh_router
+from telepromos.services import ingest_source_posts, sync_deal_sources_from_config
+
+poll_interval_minutes = settings.poll_interval_minutes
+posts_per_creator = settings.posts_per_creator
+_scheduler_task = None
+
+
+async def deals_ingestion_loop() -> None:
+    logger.info("TelePromos deals ingestion scheduler started (interval={}min)", poll_interval_minutes)
+    while True:
+        try:
+            factory = await get_session_factory()
+            async with factory() as session:
+                await sync_deal_sources_from_config(session)
+                result = await session.execute(
+                    select(DealSource).where(DealSource.is_active == True)
+                )
+                active_sources = result.scalars().all()
+                if active_sources:
+                    logger.info("Scheduled deal ingestion for {} source(s)", len(active_sources))
+                    for source in active_sources:
+                        await ingest_source_posts(source, session, posts_limit=posts_per_creator)
+                    await session.commit()
+                else:
+                    logger.debug("No active deal sources to ingest")
+        except Exception as e:
+            logger.error("TelePromos deals ingestion loop error: {}", e)
+        await asyncio.sleep(poll_interval_minutes * 60)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _scheduler_task
     logger.info("Starting up TelePromos server")
     await get_session_factory()
+    _scheduler_task = asyncio.create_task(deals_ingestion_loop())
     yield
     logger.info("Shutting down TelePromos server")
+    if _scheduler_task and not _scheduler_task.done():
+        _scheduler_task.cancel()
+        try:
+            await _scheduler_task
+        except asyncio.CancelledError:
+            pass
+    await close_instagram_client()
     await close_session_factory()
 
 
@@ -31,6 +72,7 @@ app.add_middleware(
 )
 
 app.include_router(deals_router, prefix="/api/deals")
+app.include_router(refresh_router, prefix="/api/refresh")
 
 
 @app.get("/health")
