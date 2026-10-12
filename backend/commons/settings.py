@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_webhook_secret: str | None = None
     telegram_app_url: str = "http://localhost:5174"
+    telegram_initdata_max_age_seconds: int = 86400
     telepromos_cors_origin: str = "http://localhost:5174"
 
     postgres_url: str | None = None
