@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from commons import settings
 from commons.db import get_db_session
-from telepromos.models import DealSource
+from telepromos.models import Deal, DealSource
+from telepromos.notifier import notify_new_deals
 from telepromos.services import ingest_source_posts, sync_deal_sources_from_config
 
 router = APIRouter(tags=["refresh"])
@@ -18,10 +19,15 @@ async def refresh(session: AsyncSession = Depends(get_db_session)):
     result = await session.execute(select(DealSource).where(DealSource.is_active == True))
     active_sources = result.scalars().all()
     counts = {}
+    new_deals: list[Deal] = []
     for source in active_sources:
-        counts[source.username] = await ingest_source_posts(
+        source_deals = await ingest_source_posts(
             source, session, posts_limit=settings.posts_per_creator
         )
+        counts[source.username] = len(source_deals)
+        new_deals.extend(source_deals)
     await session.commit()
+    if new_deals:
+        await notify_new_deals(session, new_deals)
     logger.info("Manual TelePromos refresh complete: {}", counts)
     return {"ingested": counts}

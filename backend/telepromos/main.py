@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from commons import settings
 from commons.db import get_session_factory, close_session_factory
 from commons.instagram import close_instagram_client
-from telepromos.models import DealSource
-from telepromos.routers import deals_router, refresh_router
+from telepromos.models import Deal, DealSource
+from telepromos.notifier import notify_new_deals
+from telepromos.routers import deals_router, me_router, refresh_router, telegram_router
 from telepromos.services import ingest_source_posts, sync_deal_sources_from_config
 
 poll_interval_minutes = settings.poll_interval_minutes
@@ -32,13 +33,16 @@ async def deals_ingestion_loop() -> None:
                     select(DealSource).where(DealSource.is_active == True)
                 )
                 active_sources = result.scalars().all()
+                new_deals: list[Deal] = []
                 if active_sources:
                     logger.info("Scheduled deal ingestion for {} source(s)", len(active_sources))
                     for source in active_sources:
-                        await ingest_source_posts(source, session, posts_limit=posts_per_creator)
-                    await session.commit()
-                else:
-                    logger.debug("No active deal sources to ingest")
+                        new_deals.extend(
+                            await ingest_source_posts(source, session, posts_limit=posts_per_creator)
+                        )
+                await session.commit()
+                if new_deals:
+                    await notify_new_deals(session, new_deals)
         except Exception as e:
             logger.error("TelePromos deals ingestion loop error: {}", e)
         await asyncio.sleep(poll_interval_minutes * 60)
@@ -92,7 +96,9 @@ app.add_middleware(
 )
 
 app.include_router(deals_router, prefix="/api/deals")
+app.include_router(me_router)
 app.include_router(refresh_router, prefix="/api/refresh")
+app.include_router(telegram_router)
 
 
 @app.get("/", include_in_schema=False)

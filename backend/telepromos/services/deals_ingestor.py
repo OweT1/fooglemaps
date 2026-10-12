@@ -41,14 +41,14 @@ async def sync_deal_sources_from_config(session: AsyncSession) -> None:
     await session.commit()
 
 
-async def ingest_source_posts(source: DealSource, session: AsyncSession, posts_limit: int = 10) -> int:
+async def ingest_source_posts(source: DealSource, session: AsyncSession, posts_limit: int = 10) -> list[Deal]:
     username = source.username
     logger.info("Starting deal ingestion for source: {}", username)
 
     client = await get_instagram_client()
     posts_data = await client.fetch_user_posts(username, posts_limit=posts_limit)
 
-    ingest_count = 0
+    new_deals: list[Deal] = []
     for data in posts_data:
         shortcode = data["shortcode"]
 
@@ -92,24 +92,23 @@ async def ingest_source_posts(source: DealSource, session: AsyncSession, posts_l
         if lat is not None and lng is not None:
             geom = WKTElement(f"POINT({lng} {lat})", srid=4326)
 
-        session.add(
-            Deal(
-                title=title,
-                description=deal_data.get("description"),
-                venue_name=venue_name[:500],
-                address=address,
-                geom=geom,
-                discount_text=deal_data.get("discount_text"),
-                pct_off=deal_data.get("pct_off"),
-                valid_from=deal_data.get("valid_from"),
-                valid_until=deal_data.get("valid_until"),
-                terms=deal_data.get("terms"),
-                source_post_id=db_post.id,
-            )
+        deal = Deal(
+            title=title,
+            description=deal_data.get("description"),
+            venue_name=venue_name[:500],
+            address=address,
+            geom=geom,
+            discount_text=deal_data.get("discount_text"),
+            pct_off=deal_data.get("pct_off"),
+            valid_from=deal_data.get("valid_from"),
+            valid_until=deal_data.get("valid_until"),
+            terms=deal_data.get("terms"),
+            source_post_id=db_post.id,
         )
-        ingest_count += 1
+        session.add(deal)
+        new_deals.append(deal)
         logger.debug("Ingested deal for post {} by {}: venue={}", shortcode, username, venue_name)
 
     source.last_checked_at = datetime.now(timezone.utc)
-    logger.info("Finished deal ingestion for {}: {} new deals", username, ingest_count)
-    return ingest_count
+    logger.info("Finished deal ingestion for {}: {} new deals", username, len(new_deals))
+    return new_deals
