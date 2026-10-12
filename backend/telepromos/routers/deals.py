@@ -15,7 +15,7 @@ from telepromos.schemas import (
     GeoJSONGeometry,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["deals"])
 
 _geom_as_geometry = cast(
     Deal.geom,

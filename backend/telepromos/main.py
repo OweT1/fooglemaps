@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import commons.logger  # noqa: F401  (configures loguru)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,7 +62,26 @@ async def lifespan(app: FastAPI):
     await close_session_factory()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="TelePromos API",
+    version="0.1.0",
+    lifespan=lifespan,
+    description=(
+        "Backend for TelePromos, the Telegram Mini App for Singapore food deals. "
+        "Deals are scraped from Instagram via instagrapi, extracted with an LLM, "
+        "and geocoded to PostGIS points.\n\n"
+        "Interactive docs: [/docs](/docs) (Swagger UI) and [/redoc](/redoc)."
+    ),
+    openapi_tags=[
+        {"name": "deals", "description": "Food deals listing and detail (GeoJSON for the map)."},
+        {"name": "refresh", "description": "Manual ingestion trigger for deal sources."},
+    ],
+    swagger_ui_parameters={
+        "docExpansion": "none",
+        "filter": True,
+        "defaultModelsExpandDepth": -1,
+    },
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +93,11 @@ app.add_middleware(
 
 app.include_router(deals_router, prefix="/api/deals")
 app.include_router(refresh_router, prefix="/api/refresh")
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse("/docs")
 
 
 @app.get("/health")

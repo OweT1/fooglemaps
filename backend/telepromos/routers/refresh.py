@@ -8,7 +8,7 @@ from commons.db import get_db_session
 from telepromos.models import DealSource
 from telepromos.services import ingest_source_posts, sync_deal_sources_from_config
 
-router = APIRouter()
+router = APIRouter(tags=["refresh"])
 
 
 @router.post("")
